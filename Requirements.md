@@ -2,17 +2,17 @@
 
 ## Elevator Pitch
 
-Movie Tree is a movie rating app for _branching_ out, and finding new movies that might be outside of what you usually watch. The intent is to fix the two main problems with traditional movie recommending servies. First is that you tend to fall into a trend with movies that are recommended to you (if you watch a lot of action movies that is all you will see). The second issue is that newer movies get more attention which covers up older gems.
+Movie Tree is a movie rating app designed to help users _branch_ out and discover films outside their usual preferences. It addresses two common issues with traditional recommendation systems: users can get stuck in repetitive recommendation loops (for example, watching mostly action movies leads to mostly action recommendations), and newer movies often receive more visibility than older ones.
 
 ## Audience
 
-This app is for movie lovers, or general audiences that want to find a hidden gem of a movie.
+This app is for movie lovers and general audiences who want to expand their range of movies.
 
 ## Use Cases
 
-- Keeping track of movies you have watched and how much you liked them
-- Seeing what movies are popular with people right now
-- Finding new movies that you might like that may or may not be inline with what you have previously watched
+- Track movies you have watched and how much you liked them
+- View movies that are currently popular with users
+- Discover new movies that may or may not align with your usual viewing history
 
 ## Tech Stack
 
@@ -32,19 +32,30 @@ This app is for movie lovers, or general audiences that want to find a hidden ge
 ### Other
 
 - SQL Server
-- TMDB (The Movie DataBase for getting movie data)
+- TMDB (The Movie Database, used as the movie metadata source)
 
 ## Technical Requirements
 
-- Server should periodically get an updated movie list from TMDB
-- The home page should display a list of current movies that are popular with users, and another list that is random movies picked by AI.
-- AI picked movies should be updated periodically (maybe every week?).
-- If the user is logged in, the home page should also display a list containing the users "watch later" list.
-- Users should be able to search for movies based on title.
-- Once a user finds a movie, they should be able to either place it into a watch later list, or rate it out of 10 and leave a review.
-- Users should be able to set their reviews to public, private, or friends. The rated score should always be public
-- Users should be able to add friends.
-- There should be a feed page where recent ratings can be viewed.
-- Feed page should have a tab for public rating which should include the ratings of all users, and a friends tab which only displays reviews from the users friends
-- There should be a generate movies page where users can generate a list of 10 movies recommended to them.
-- When generating recommended movies, the user should be able to choose between using all their movies as data, selecting which movies they want to be used as data, picking a genre, and letting the AI have full reign on deciding.
+- The server shall synchronize movie data from TMDB on a recurring schedule.
+- The home page shall display:
+	- a list of movies currently popular with users, and
+	- a separate list of AI-selected discovery movies.
+- AI-selected discovery movies shall refresh on a recurring schedule (target: weekly).
+- If a user is logged in, the home page shall also display that user's Watch Later list.
+- Users shall be able to search for movies by title.
+- After finding a movie, users shall be able to either:
+	- add it to their Watch Later list, or
+	- rate it on a 1-10 scale and leave a review.
+- Users shall be able to set review visibility to Public, Private, or Friends.
+- Numeric rating scores shall always be public, regardless of review visibility.
+- Users shall be able to add friends.
+- The app shall include a Feed page for viewing recent ratings.
+- The Feed page shall include:
+	- a Public tab with ratings from all users, and
+	- a Friends tab that only displays reviews from a user's friends.
+- The app shall include a Generate Movies page where users can generate a list of 10 recommended movies.
+- When generating recommendations, users shall be able to choose one of the following input modes:
+	- use all of their movie history,
+	- select specific movies to use as input,
+	- select a genre, or
+	- use fully automatic AI selection.
