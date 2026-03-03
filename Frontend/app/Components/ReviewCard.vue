@@ -1,0 +1,138 @@
+<template>
+  <v-card color="surface" border rounded="lg" class="review-card pa-4">
+    <!-- User header -->
+    <div class="d-flex align-center mb-4 ga-3">
+      <v-avatar size="36" color="primary">
+        <v-img v-if="review.avatar" :src="review.avatar" :alt="review.username" />
+        <span v-else class="text-body-2 font-weight-bold" style="color: rgb(var(--v-theme-on-primary))">
+          {{ review.username.charAt(0).toUpperCase() }}
+        </span>
+      </v-avatar>
+      <div>
+        <div class="text-body-2 font-weight-semibold">{{ review.username }}</div>
+        <div class="text-caption" style="color: rgba(var(--v-theme-on-surface), 0.5)">
+          {{ review.date }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Content row: Poster | Movie Info | Score -->
+    <div class="review-content d-flex ga-4">
+      <!-- Movie Poster -->
+      <div class="review-poster">
+        <div class="poster-wrap">
+          <v-img
+            v-if="review.movie.poster"
+            :src="review.movie.poster"
+            :alt="review.movie.title"
+            cover
+            class="h-100"
+          />
+          <div v-else class="poster-placeholder d-flex align-center justify-center h-100">
+            <v-icon size="28" color="surface-variant">mdi-movie-open</v-icon>
+          </div>
+        </div>
+      </div>
+
+      <!-- Movie Info -->
+      <div class="review-movie-info flex-grow-1 d-flex flex-column justify-center">
+        <div class="text-h6 font-weight-bold mb-1">{{ review.movie.title }}</div>
+        <div class="text-body-2 mb-2" style="color: rgba(var(--v-theme-on-surface), 0.6)">
+          {{ review.movie.year }}
+          <span v-if="review.movie.genre" class="ml-1">· {{ review.movie.genre }}</span>
+        </div>
+        <div v-if="review.movie.director" class="text-caption" style="color: rgba(var(--v-theme-on-surface), 0.5)">
+          Directed by {{ review.movie.director }}
+        </div>
+      </div>
+
+      <!-- Score -->
+      <div class="review-score d-flex align-center justify-center">
+        <v-sheet
+          rounded="lg"
+          class="score-box d-flex flex-column align-center justify-center pa-3"
+          :style="{ backgroundColor: scoreColor }"
+        >
+          <span class="score-number font-weight-bold">{{ review.score }}</span>
+          <span class="score-label text-caption">/10</span>
+        </v-sheet>
+      </div>
+    </div>
+
+    <!-- Review text (optional) -->
+    <div
+      v-if="review.text"
+      class="review-text mt-4 pa-3"
+      style="background: rgba(var(--v-theme-on-surface), 0.04); border-radius: 8px;"
+    >
+      <p class="text-body-2 mb-0" style="color: rgba(var(--v-theme-on-surface), 0.8); line-height: 1.6;">
+        {{ review.text }}
+      </p>
+    </div>
+  </v-card>
+</template>
+
+<script setup lang="ts">
+const props = defineProps<{
+  review: {
+    id: number | string
+    username: string
+    avatar?: string
+    date: string
+    score: number
+    text?: string
+    movie: {
+      title: string
+      year?: number | string
+      poster?: string
+      genre?: string
+      director?: string
+    }
+  }
+}>()
+
+const scoreColor = computed(() => {
+  const s = props.review.score
+  if (s >= 7) return 'rgba(255, 209, 71, 0.15)'
+  if (s >= 4) return 'rgba(247, 155, 62, 0.15)'
+  return 'rgba(224, 86, 86, 0.15)'
+})
+</script>
+
+<style scoped>
+.review-card {
+  border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.review-poster {
+  flex-shrink: 0;
+  width: 80px;
+}
+
+.poster-wrap {
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.poster-placeholder {
+  width: 100%;
+}
+
+.score-box {
+  min-width: 72px;
+  min-height: 72px;
+}
+
+.score-number {
+  font-size: 1.75rem;
+  line-height: 1;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.score-label {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 11px;
+}
+</style>
