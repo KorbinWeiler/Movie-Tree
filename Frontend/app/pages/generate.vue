@@ -20,13 +20,25 @@
         color="primary"
         size="large"
         rounded="pill"
-        :loading="generating"
+        :loading="generateStore.isGenerating"
         style="min-width: 180px; color: rgb(var(--v-theme-on-primary)); font-weight: 600; text-transform: none;"
         @click="generate"
       >
         <v-icon start>mdi-creation</v-icon>
         Generate
       </v-btn>
+
+      <v-alert
+        v-if="generateError"
+        type="error"
+        variant="tonal"
+        density="compact"
+        closable
+        style="max-width: 360px; width: 100%;"
+        @click:close="generateError = null"
+      >
+        {{ generateError }}
+      </v-alert>
     </div>
 
     <!-- Results -->
@@ -39,16 +51,16 @@
       </div>
       <v-row dense>
         <v-col
-          v-for="(movie, index) in results"
-          :key="movie.id"
+          v-for="pick in results"
+          :key="pick.movie.id"
           cols="6"
           sm="4"
           md="3"
           lg="2"
         >
           <div class="position-relative">
-            <div class="result-number">{{ index + 1 }}</div>
-            <MovieCard :movie="movie" />
+            <div class="result-number">{{ pick.position }}</div>
+            <MovieCard :movie="pick.movie" />
           </div>
         </v-col>
       </v-row>
@@ -69,39 +81,41 @@
 </template>
 
 <script setup lang="ts">
-const generationType = ref('all')
-const generating = ref(false)
-const results = ref<typeof moviePool>([])
+definePageMeta({ middleware: 'auth' })
+
+const generateStore = useGenerateStore()
+const movieStore = useMovieStore()
+
+try { await movieStore.fetchGenres() } catch { /* ignore */ }
+
+type GenMode = 'AllHistory' | 'Selected' | 'Genre' | 'FullAI'
+const generationType = ref<GenMode>('AllHistory')
+const selectedGenreId = ref<number | null>(null)
+const generateError = ref<string | null>(null)
 
 const generationTypes = [
-  { label: 'Based on all my movies', value: 'all' },
-  { label: 'Select specific movies', value: 'select' },
-  { label: 'By genre', value: 'genre' },
-  { label: "Let AI decide", value: 'free' },
-]
-
-const moviePool = [
-  { id: 101, title: 'Harakiri', year: 1962, rating: 8.6 },
-  { id: 102, title: 'In the Mood for Love', year: 2000, rating: 8.1 },
-  { id: 103, title: 'A Brighter Summer Day', year: 1991, rating: 8.1 },
-  { id: 104, title: 'The Conformist', year: 1970, rating: 7.9 },
-  { id: 105, title: 'Pickpocket', year: 1959, rating: 7.7 },
-  { id: 106, title: 'Aguirre, the Wrath of God', year: 1972, rating: 7.8 },
-  { id: 107, title: 'A Man Escaped', year: 1956, rating: 7.9 },
-  { id: 108, title: 'Mon Oncle', year: 1958, rating: 7.7 },
-  { id: 109, title: 'The Battle of Algiers', year: 1966, rating: 8.1 },
-  { id: 110, title: 'Dersu Uzala', year: 1975, rating: 8.0 },
-  { id: 111, title: 'The Travelling Players', year: 1975, rating: 7.8 },
-  { id: 112, title: 'Nostalghia', year: 1983, rating: 7.9 },
-]
+  { label: 'Based on all my movies', value: 'AllHistory' },
+  { label: 'Select specific movies', value: 'Selected' },
+  { label: 'By genre', value: 'Genre' },
+  { label: 'Let AI decide', value: 'FullAI' },
+] as const
 
 const generate = async () => {
-  generating.value = true
-  // Simulate an async call
-  await new Promise((resolve) => setTimeout(resolve, 1200))
-  results.value = [...moviePool].sort(() => Math.random() - 0.5).slice(0, 10)
-  generating.value = false
+  generateError.value = null
+  try {
+    await generateStore.generate(
+      generationType.value,
+      undefined,
+      generationType.value === 'Genre' ? (selectedGenreId.value ?? undefined) : undefined
+    )
+  } catch {
+    generateError.value = 'Could not generate recommendations. Please try again.'
+  }
 }
+
+const results = computed(() =>
+  generateStore.lastGenerated?.movies ?? []
+)
 </script>
 
 <style scoped>

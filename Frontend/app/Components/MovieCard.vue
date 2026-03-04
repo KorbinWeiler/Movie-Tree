@@ -3,8 +3,8 @@
     <!-- Poster -->
     <div class="movie-poster">
       <v-img
-        v-if="movie.poster"
-        :src="movie.poster"
+        v-if="movie.posterUrl"
+        :src="movie.posterUrl"
         :alt="movie.title"
         cover
         class="poster-img"
@@ -14,8 +14,8 @@
       </div>
 
       <!-- Rating badge -->
-      <div v-if="movie.rating" class="rating-badge">
-        <span>{{ movie.rating }}</span>
+      <div v-if="movie.averageRating" class="rating-badge">
+        <span>{{ movie.averageRating }}</span>
       </div>
     </div>
 
@@ -25,26 +25,30 @@
         {{ movie.title }}
       </div>
       <div class="movie-year text-caption" style="color: rgb(var(--v-theme-secondary), 0.7)">
-        {{ movie.year }}
+        {{ releaseYear }}
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   movie: {
-    id: number | string
+    id: number
     title: string
-    year?: number | string
-    poster?: string
-    rating?: number | string
+    releaseDate?: string | null
+    posterUrl?: string | null
+    averageRating?: number | null
   }
 }>()
 
 defineEmits<{
   click: [movie: object]
 }>()
+
+const releaseYear = computed(() =>
+  props.movie.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''
+)
 </script>
 
 <style scoped>

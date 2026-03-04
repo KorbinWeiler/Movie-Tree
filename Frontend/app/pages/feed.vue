@@ -25,7 +25,7 @@
 
     <div class="d-flex flex-column ga-4">
       <ReviewCard
-        v-for="review in filteredReviews"
+        v-for="review in visibleReviews"
         :key="review.id"
         :review="review"
       />
@@ -35,61 +35,24 @@
 </template>
 
 <script setup lang="ts">
+const feedStore = useFeedStore()
 const activeTab = ref<'public' | 'friends'>('public')
 
 const tabs = [
   { label: 'Public', value: 'public' },
   { label: 'Friends', value: 'friends' },
-]
+] as const
 
-const allReviews = [
-  {
-    id: 1,
-    username: 'cinephile92',
-    date: 'Mar 2, 2026',
-    score: 9,
-    tab: 'public',
-    movie: { title: 'Rashomon', year: 1950, genre: 'Drama', director: 'Akira Kurosawa' },
-  },
-  {
-    id: 2,
-    username: 'movie_buff',
-    date: 'Mar 1, 2026',
-    score: 7,
-    tab: 'public',
-    text: 'A hauntingly beautiful film. The long takes and minimalist dialogue make every scene feel deliberate and meaningful.',
-    movie: { title: 'Stalker', year: 1979, genre: 'Sci-Fi Drama', director: 'Andrei Tarkovsky' },
-  },
-  {
-    id: 3,
-    username: 'film_friend',
-    date: 'Mar 1, 2026',
-    score: 8,
-    tab: 'friends',
-    text: 'One of the most important war films ever made. Absolutely brutal and necessary.',
-    movie: { title: 'Come and See', year: 1985, genre: 'War Drama', director: 'Elem Klimov' },
-  },
-  {
-    id: 4,
-    username: 'reelreviewer',
-    date: 'Feb 28, 2026',
-    score: 6,
-    tab: 'public',
-    movie: { title: 'Breathless', year: 1960, genre: 'Crime Drama', director: 'Jean-Luc Godard' },
-  },
-  {
-    id: 5,
-    username: 'jane_watches',
-    date: 'Feb 27, 2026',
-    score: 10,
-    tab: 'friends',
-    text: 'Perfect film. Changed the way I think about cinema.',
-    movie: { title: 'Tokyo Story', year: 1953, genre: 'Drama', director: 'Yasujirō Ozu' },
-  },
-]
+try { await feedStore.fetchPublic(true) } catch { /* ignore */ }
 
-const filteredReviews = computed(() =>
-  allReviews.filter((r) => r.tab === activeTab.value)
+watch(activeTab, async (tab) => {
+  if (tab === 'friends' && feedStore.friendsFeed.length === 0) {
+    try { await feedStore.fetchFriends(true) } catch { /* ignore */ }
+  }
+})
+
+const visibleReviews = computed(() =>
+  activeTab.value === 'public' ? feedStore.publicFeed : feedStore.friendsFeed
 )
 </script>
 

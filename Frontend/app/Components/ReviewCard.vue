@@ -3,15 +3,15 @@
     <!-- User header -->
     <div class="d-flex align-center mb-4 ga-3">
       <v-avatar size="36" color="primary">
-        <v-img v-if="review.avatar" :src="review.avatar" :alt="review.username" />
+        <v-img v-if="review.userAvatar" :src="review.userAvatar" :alt="review.userName" />
         <span v-else class="text-body-2 font-weight-bold" style="color: rgb(var(--v-theme-on-primary))">
-          {{ review.username.charAt(0).toUpperCase() }}
+          {{ review.userName.charAt(0).toUpperCase() }}
         </span>
       </v-avatar>
       <div>
-        <div class="text-body-2 font-weight-semibold">{{ review.username }}</div>
+        <div class="text-body-2 font-weight-semibold">{{ review.userName }}</div>
         <div class="text-caption" style="color: rgba(var(--v-theme-on-surface), 0.5)">
-          {{ review.date }}
+          {{ formattedDate }}
         </div>
       </div>
     </div>
@@ -22,9 +22,9 @@
       <div class="review-poster">
         <div class="poster-wrap">
           <v-img
-            v-if="review.movie.poster"
-            :src="review.movie.poster"
-            :alt="review.movie.title"
+            v-if="review.moviePoster"
+            :src="review.moviePoster"
+            :alt="review.movieTitle"
             cover
             class="h-100"
           />
@@ -36,14 +36,7 @@
 
       <!-- Movie Info -->
       <div class="review-movie-info flex-grow-1 d-flex flex-column justify-center">
-        <div class="text-h6 font-weight-bold mb-1">{{ review.movie.title }}</div>
-        <div class="text-body-2 mb-2" style="color: rgba(var(--v-theme-on-surface), 0.6)">
-          {{ review.movie.year }}
-          <span v-if="review.movie.genre" class="ml-1">· {{ review.movie.genre }}</span>
-        </div>
-        <div v-if="review.movie.director" class="text-caption" style="color: rgba(var(--v-theme-on-surface), 0.5)">
-          Directed by {{ review.movie.director }}
-        </div>
+        <div class="text-h6 font-weight-bold mb-1">{{ review.movieTitle }}</div>
       </div>
 
       <!-- Score -->
@@ -53,7 +46,7 @@
           class="score-box d-flex flex-column align-center justify-center pa-3"
           :style="{ backgroundColor: scoreColor }"
         >
-          <span class="score-number font-weight-bold">{{ review.score }}</span>
+          <span class="score-number font-weight-bold">{{ review.rating }}</span>
           <span class="score-label text-caption">/10</span>
         </v-sheet>
       </div>
@@ -61,12 +54,12 @@
 
     <!-- Review text (optional) -->
     <div
-      v-if="review.text"
+      v-if="review.reviewText"
       class="review-text mt-4 pa-3"
       style="background: rgba(var(--v-theme-on-surface), 0.04); border-radius: 8px;"
     >
       <p class="text-body-2 mb-0" style="color: rgba(var(--v-theme-on-surface), 0.8); line-height: 1.6;">
-        {{ review.text }}
+        {{ review.reviewText }}
       </p>
     </div>
   </v-card>
@@ -75,24 +68,23 @@
 <script setup lang="ts">
 const props = defineProps<{
   review: {
-    id: number | string
-    username: string
-    avatar?: string
-    date: string
-    score: number
-    text?: string
-    movie: {
-      title: string
-      year?: number | string
-      poster?: string
-      genre?: string
-      director?: string
-    }
+    id: number
+    userName: string
+    userAvatar?: string | null
+    createdAt: string
+    rating: number
+    reviewText?: string | null
+    movieTitle: string
+    moviePoster?: string | null
   }
 }>()
 
+const formattedDate = computed(() =>
+  new Date(props.review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+)
+
 const scoreColor = computed(() => {
-  const s = props.review.score
+  const s = props.review.rating
   if (s >= 7) return 'rgba(255, 209, 71, 0.15)'
   if (s >= 4) return 'rgba(247, 155, 62, 0.15)'
   return 'rgba(224, 86, 86, 0.15)'

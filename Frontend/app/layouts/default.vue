@@ -50,10 +50,40 @@
         variant="text"
         icon
         size="small"
-        class="mr-2 ml-1"
+        class="ml-1"
         :color="route.path === '/settings' ? 'primary' : 'default'"
       >
         <v-icon>mdi-menu</v-icon>
+      </v-btn>
+
+      <!-- Auth: logged in -->
+      <template v-if="authStore.isLoggedIn">
+        <span class="text-body-2 mx-2" style="color: rgba(var(--v-theme-on-surface), 0.6)">
+          {{ authStore.user?.userName }}
+        </span>
+        <v-btn
+          variant="text"
+          size="small"
+          class="mr-2"
+          style="text-transform: none;"
+          @click="logout"
+        >
+          Sign out
+        </v-btn>
+      </template>
+
+      <!-- Auth: logged out -->
+      <v-btn
+        v-else
+        :to="'/login'"
+        variant="flat"
+        color="primary"
+        size="small"
+        rounded="pill"
+        class="mr-3"
+        style="text-transform: none; color: rgb(var(--v-theme-on-primary));"
+      >
+        Sign in
       </v-btn>
     </v-app-bar>
 
@@ -65,12 +95,18 @@
 
 <script setup lang="ts">
 const route = useRoute()
+const authStore = useAuthStore()
 
 const navLinks = [
   { label: 'Feed', to: '/feed' },
   { label: 'Recommendations', to: '/generate' },
   { label: 'Your Movies', to: '/your-movies' },
 ]
+
+const logout = () => {
+  authStore.logout()
+  navigateTo('/')
+}
 </script>
 
 <style scoped>

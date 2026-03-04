@@ -4,7 +4,13 @@ import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  modules: ['@pinia/nuxt', '@vueuse/nuxt'],
   css: ['~/assets/main.css'],
+  runtimeConfig: {
+    public: {
+      apiBase: 'http://localhost:5000/api',
+    },
+  },
   build: {
     transpile: ['vuetify'],
   },

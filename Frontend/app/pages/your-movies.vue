@@ -39,29 +39,34 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ middleware: 'auth' })
+
+const userStore = useUserStore()
 const activeTab = ref<'watched' | 'watchlater'>('watched')
 
 const tabs = [
   { label: 'Watched', value: 'watched' },
   { label: 'Watch Later', value: 'watchlater' },
-]
+] as const
 
-const watchedMovies = [
-  { id: 1, title: 'Rashomon', year: 1950, rating: 8.2 },
-  { id: 2, title: 'Tokyo Story', year: 1953, rating: 8.2 },
-  { id: 3, title: 'Come and See', year: 1985, rating: 8.3 },
-  { id: 4, title: 'Stalker', year: 1979, rating: 8.1 },
-  { id: 5, title: 'Breathless', year: 1960, rating: 7.8 },
-  { id: 6, title: 'The 400 Blows', year: 1959, rating: 8.0 },
-]
-
-const watchLaterMovies = [
-  { id: 7, title: 'The Seventh Seal', year: 1957, rating: 8.0 },
-  { id: 8, title: 'La Strada', year: 1954, rating: 8.0 },
-  { id: 9, title: 'Wild Strawberries', year: 1957, rating: 8.1 },
-]
+try {
+  await Promise.all([
+    userStore.fetchMyReviews(),
+    userStore.fetchWatchLater(),
+  ])
+} catch { /* ignore */ }
 
 const visibleMovies = computed(() =>
-  activeTab.value === 'watched' ? watchedMovies : watchLaterMovies
+  activeTab.value === 'watched'
+    ? userStore.reviews.map(r => ({
+        id: r.movieId,
+        title: r.movieTitle,
+        posterUrl: r.moviePoster,
+        averageRating: r.rating,
+        releaseDate: null,
+        reviewCount: 0,
+        genres: [],
+      }))
+    : userStore.watchLater.map(w => w.movie)
 )
 </script>
