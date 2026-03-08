@@ -21,7 +21,7 @@
 
     <!-- Info -->
     <div class="movie-info pa-2">
-      <div class="movie-title text-body-2 font-weight-medium text-truncate">
+      <div class="movie-title text-body-2 font-weight-medium">
         {{ movie.title }}
       </div>
       <div class="movie-year text-caption" style="color: rgb(var(--v-theme-secondary), 0.7)">
@@ -105,5 +105,10 @@ const releaseYear = computed(() =>
 
 .movie-title {
   color: rgb(var(--v-theme-on-surface));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
 }
 </style>

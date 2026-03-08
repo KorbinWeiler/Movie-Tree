@@ -89,12 +89,14 @@ const watchLaterMovies = computed(() => userStore.watchLater.map(w => w.movie))
 
 .movie-row {
   display: flex;
+  justify-content: center;
   gap: 16px;
   overflow-x: auto;
   padding-bottom: 8px;
+  padding: 12px;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--v-theme-on-surface), 0.2) transparent;
-  scroll-snap-type: x mandatory;
+  /* scroll-snap-type: x mandatory; */
 }
 
 .movie-row::-webkit-scrollbar {
@@ -108,7 +110,7 @@ const watchLaterMovies = computed(() => userStore.watchLater.map(w => w.movie))
 
 .movie-row-item {
   flex-shrink: 0;
-  width: 140px;
+  width: calc(100% / 11);
   scroll-snap-align: start;
 }
 
