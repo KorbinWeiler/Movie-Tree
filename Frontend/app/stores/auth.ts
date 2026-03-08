@@ -22,6 +22,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isLoggedIn: (state) => !!state.token && new Date(state.expiresAt ?? 0) > new Date(),
+    isAdmin: (state) => state.user?.role === 'Admin',
   },
 
   actions: {

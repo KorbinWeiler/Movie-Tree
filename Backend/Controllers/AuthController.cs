@@ -47,6 +47,6 @@ public class AuthController(UserManager<ApplicationUser> userManager, TokenServi
         if (user == null)
             return Unauthorized();
 
-        return Ok(new { user.Id, user.UserName, user.Email });
+        return Ok(new { user.Id, user.UserName, user.Email, Role = user.Role.ToString() });
     }
 }

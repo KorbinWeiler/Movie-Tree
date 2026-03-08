@@ -362,9 +362,6 @@ namespace Backend.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("OriginalTitle")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PosterUrl")
                         .HasColumnType("nvarchar(max)");
 

@@ -97,11 +97,12 @@
 const route = useRoute()
 const authStore = useAuthStore()
 
-const navLinks = [
+const navLinks = computed(() => [
   { label: 'Feed', to: '/feed' },
   { label: 'Recommendations', to: '/generate' },
   { label: 'Your Movies', to: '/your-movies' },
-]
+  ...(authStore.isAdmin ? [{ label: 'Admin', to: '/admin' }] : []),
+])
 
 const logout = () => {
   authStore.logout()

@@ -16,7 +16,6 @@ export interface MovieSummaryDto {
 }
 
 export interface MovieDetailDto extends MovieSummaryDto {
-  originalTitle: string | null
   description: string | null
   runtimeMinutes: number | null
 }

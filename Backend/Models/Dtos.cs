@@ -15,7 +15,6 @@ public record MovieSummaryDto(
 public record MovieDetailDto(
     int Id,
     string Title,
-    string? OriginalTitle,
     string? Description,
     DateOnly? ReleaseDate,
     int? RuntimeMinutes,

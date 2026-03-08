@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ public class MovieController(AppDbContext db) : ControllerBase
     );
 
     private static MovieDetailDto ToDetail(Movie m) => new(
-        m.Id, m.Title, m.OriginalTitle, m.Description, m.ReleaseDate, m.RuntimeMinutes, m.PosterUrl,
+        m.Id, m.Title, m.Description, m.ReleaseDate, m.RuntimeMinutes, m.PosterUrl,
         m.Reviews.Count > 0 ? Math.Round(m.Reviews.Average(r => (double)r.Rating), 1) : null,
         m.Reviews.Count,
         m.MovieGenres.Select(mg => new GenreDto(mg.Genre.Id, mg.Genre.Name))
@@ -35,7 +36,7 @@ public class MovieController(AppDbContext db) : ControllerBase
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
-            query = query.Where(m => m.Title.Contains(q) || (m.OriginalTitle != null && m.OriginalTitle.Contains(q)));
+            query = query.Where(m => m.Title.Contains(q));
 
         if (genreId.HasValue)
             query = query.Where(m => m.MovieGenres.Any(mg => mg.GenreId == genreId.Value));
@@ -87,5 +88,45 @@ public class MovieController(AppDbContext db) : ControllerBase
     {
         var genres = await db.Genres.OrderBy(g => g.Name).ToListAsync();
         return Ok(genres.Select(g => new GenreDto(g.Id, g.Name)));
+    }
+
+    [HttpPost("list/upload")]
+    [Authorize (Roles = "Admin")]
+    public async Task<IActionResult> UploadMovieList(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        var tempFilePath = Path.GetTempFileName();
+        try
+        {
+            using (var stream = new FileStream(tempFilePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var movies = MovieExtractor.ExtractMovieIdsFromFile(tempFilePath);
+            if (movies.Count == 0)
+                return BadRequest("No valid movie data found in the file.");
+
+            foreach (var movie in movies)
+            {
+                if (!await db.Movies.AnyAsync(m => m.Id == movie.Id))
+                {
+                    db.Movies.Add(movie);
+                }
+            }
+            await db.SaveChangesAsync();
+
+            return Ok(new { AddedCount = movies.Count });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error processing file: {ex.Message}");
+        }
+        finally
+        {
+            System.IO.File.Delete(tempFilePath);
+        }
     }
 }
