@@ -69,6 +69,25 @@ public class MovieController(AppDbContext db) : ControllerBase
         return Ok(movies.Select(ToSummary));
     }
 
+    // GET /api/movie/temp-trending — random movies, used until real trending data exists
+    [HttpGet("temp-trending")]
+    public async Task<IActionResult> TempTrending([FromQuery] int count = 10)
+    {
+        if (count > 10) count = 10;
+        var total = await db.Movies.CountAsync();
+        if (total == 0) return Ok(Array.Empty<MovieSummaryDto>());
+
+        var skip = new Random().Next(0, Math.Max(0, total - count));
+        var movies = await db.Movies
+            .Include(m => m.Reviews)
+            .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+            .Skip(skip)
+            .Take(count)
+            .ToListAsync();
+
+        return Ok(movies.Select(ToSummary));
+    }
+
     // GET /api/movie/{id}
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)

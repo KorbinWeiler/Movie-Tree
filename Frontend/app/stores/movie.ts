@@ -34,7 +34,7 @@ export const useMovieStore = defineStore('movie', {
     async fetchTrending() {
       const { apiFetch } = useApi()
       try {
-        this.trending = await apiFetch<MovieSummaryDto[]>('/movie/trending')
+        this.trending = await apiFetch<MovieSummaryDto[]>('/movie/temp-trending')
       } catch { /* API unavailable — keep empty array */ }
     },
 
