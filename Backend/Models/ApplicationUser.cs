@@ -10,5 +10,4 @@ public class ApplicationUser : IdentityUser
     public ICollection<WatchLaterItem> WatchLaterItems { get; set; } = [];
     public ICollection<Friendship> SentFriendRequests { get; set; } = [];
     public ICollection<Friendship> ReceivedFriendRequests { get; set; } = [];
-    public ICollection<AiPickList> AiPickLists { get; set; } = [];
 }

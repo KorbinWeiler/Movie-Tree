@@ -10,5 +10,4 @@ public class Movie
     public ICollection<MovieGenre> MovieGenres { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<WatchLaterItem> WatchLaterItems { get; set; } = [];
-    public ICollection<AiPickListItem> AiPickListItems { get; set; } = [];
 }

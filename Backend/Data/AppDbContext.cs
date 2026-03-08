@@ -10,12 +10,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<WatchLaterItem> WatchLaterItems => Set<WatchLaterItem>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
-    public DbSet<AiPickList> AiPickLists => Set<AiPickList>();
-    public DbSet<AiPickListItem> AiPickListItems => Set<AiPickListItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Movie.Id comes from TMDB — never auto-generate
+        builder.Entity<Movie>()
+            .Property(m => m.Id)
+            .ValueGeneratedNever();
 
         builder.Entity<ApplicationUser>()
             .Property(u => u.CreatedAt)
@@ -80,21 +83,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .Property(f => f.CreatedAt)
             .HasDefaultValueSql("GETUTCDATE()");
 
-        // AiPickList
-        builder.Entity<AiPickList>()
-            .Property(a => a.CreatedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
-
-        // AiPickListItem: unique movie per list, unique position per list
-        builder.Entity<AiPickListItem>()
-            .HasIndex(i => new { i.AiPickListId, i.MovieId })
-            .IsUnique();
-
-        builder.Entity<AiPickListItem>()
-            .HasIndex(i => new { i.AiPickListId, i.Position })
-            .IsUnique();
-
-        builder.Entity<AiPickListItem>()
-            .ToTable(t => t.HasCheckConstraint("CK_AiPickListItem_Position", "[Position] BETWEEN 1 AND 10"));
     }
 }

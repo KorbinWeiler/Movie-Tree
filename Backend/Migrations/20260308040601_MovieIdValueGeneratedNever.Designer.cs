@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308040601_MovieIdValueGeneratedNever")]
+    partial class MovieIdValueGeneratedNever
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,7 +33,9 @@ namespace Backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("GenerationMode")
                         .HasColumnType("int");
@@ -47,7 +52,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AiPickList");
+                    b.ToTable("AiPickLists");
                 });
 
             modelBuilder.Entity("AiPickListItem", b =>
@@ -69,11 +74,18 @@ namespace Backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AiPickListId");
-
                     b.HasIndex("MovieId");
 
-                    b.ToTable("AiPickListItem");
+                    b.HasIndex("AiPickListId", "MovieId")
+                        .IsUnique();
+
+                    b.HasIndex("AiPickListId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("AiPickListItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_AiPickListItem_Position", "[Position] BETWEEN 1 AND 10");
+                        });
                 });
 
             modelBuilder.Entity("ApplicationUser", b =>
@@ -465,7 +477,7 @@ namespace Backend.Migrations
                         .HasForeignKey("GenreId");
 
                     b.HasOne("ApplicationUser", "User")
-                        .WithMany()
+                        .WithMany("AiPickLists")
                         .HasForeignKey("UserId");
 
                     b.Navigation("Genre");
@@ -482,7 +494,7 @@ namespace Backend.Migrations
                         .IsRequired();
 
                     b.HasOne("Movie", "Movie")
-                        .WithMany()
+                        .WithMany("AiPickListItems")
                         .HasForeignKey("MovieId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -626,6 +638,8 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("ApplicationUser", b =>
                 {
+                    b.Navigation("AiPickLists");
+
                     b.Navigation("ReceivedFriendRequests");
 
                     b.Navigation("Reviews");
@@ -644,6 +658,8 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Movie", b =>
                 {
+                    b.Navigation("AiPickListItems");
+
                     b.Navigation("MovieGenres");
 
                     b.Navigation("Reviews");

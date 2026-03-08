@@ -61,7 +61,7 @@ const authStore = useAuthStore()
 try {
   await Promise.all([
     movieStore.fetchTrending(),
-    generateStore.fetchAiPicks(),
+    generateStore.loadPicks(),
   ])
 } catch { /* server offline — pages shows empty sections */ }
 
@@ -70,7 +70,7 @@ if (authStore.isLoggedIn) {
 }
 
 const trendingMovies = computed(() => movieStore.trending)
-const aiPickMovies = computed(() => generateStore.aiPicks?.movies.map(p => p.movie) ?? [])
+const aiPickMovies = computed(() => generateStore.picks)
 const watchLaterMovies = computed(() => userStore.watchLater.map(w => w.movie))
 </script>
 

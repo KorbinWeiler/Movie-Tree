@@ -1,45 +1,55 @@
 import { defineStore } from 'pinia'
 import type { MovieSummaryDto } from './movie'
 
-export interface PickedMovieDto {
-  position: number
-  movie: MovieSummaryDto
+const STORAGE_KEY = 'ai_picks'
+
+interface StoredPicks {
+  date: string          // 'YYYY-MM-DD'
+  movies: MovieSummaryDto[]
 }
 
-export interface GeneratedPickDto {
-  aiPickListId: number
-  movies: PickedMovieDto[]
+function todayString() {
+  return new Date().toISOString().slice(0, 10)
 }
-
-export type GenerationMode = 'AllHistory' | 'Selected' | 'Genre' | 'FullAI'
 
 export const useGenerateStore = defineStore('generate', {
   state: () => ({
-    aiPicks: null as GeneratedPickDto | null,         // home page global picks
-    lastGenerated: null as GeneratedPickDto | null,   // user's last generated list
+    picks: [] as MovieSummaryDto[],
     isGenerating: false,
   }),
 
   actions: {
-    async fetchAiPicks() {
-      const { apiFetch } = useApi()
-      try {
-        this.aiPicks = await apiFetch<GeneratedPickDto>('/generate/ai-picks')
-      } catch { /* keep null */ }
+    // Load from localStorage; fetch fresh if missing or from a previous day
+    async loadPicks() {
+      if (!import.meta.client) return
+
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        try {
+          const stored: StoredPicks = JSON.parse(raw)
+          if (stored.date === todayString()) {
+            this.picks = stored.movies
+            return
+          }
+        } catch { /* corrupted — fall through to fetch */ }
+      }
+
+      await this.fetchFresh()
     },
 
-    async generate(mode: GenerationMode, movieIds?: number[], genreId?: number) {
+    // Always fetch a new set and persist it
+    async fetchFresh() {
       const { apiFetch } = useApi()
       this.isGenerating = true
       try {
-        this.lastGenerated = await apiFetch<GeneratedPickDto>('/generate', {
-          method: 'POST',
-          body: { mode, movieIds: movieIds ?? null, genreId: genreId ?? null },
-        })
+        this.picks = await apiFetch<MovieSummaryDto[]>('/generate')
+        if (import.meta.client) {
+          const stored: StoredPicks = { date: todayString(), movies: this.picks }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+        }
       } finally {
         this.isGenerating = false
       }
-      return this.lastGenerated
     },
   },
 })

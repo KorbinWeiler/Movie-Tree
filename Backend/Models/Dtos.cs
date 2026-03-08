@@ -77,15 +77,4 @@ public record WatchLaterDto(
 
 // ── Generate DTOs ────────────────────────────────────────────────────────────
 
-public record GenerateRequest(
-    AiGenerationMode Mode,
-    int[]? MovieIds = null,
-    int? GenreId = null
-);
-
-public record GeneratedPickDto(
-    int AiPickListId,
-    IEnumerable<PickedMovieDto> Movies
-);
-
 public record PickedMovieDto(byte Position, MovieSummaryDto Movie);

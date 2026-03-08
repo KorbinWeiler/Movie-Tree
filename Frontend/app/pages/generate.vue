@@ -1,79 +1,58 @@
 <template>
   <v-container fluid class="pa-6">
 
-    <!-- Controls -->
-    <div class="d-flex flex-column align-center ga-4 mb-8">
-      <v-select
-        v-model="generationType"
-        :items="generationTypes"
-        item-title="label"
-        item-value="value"
-        label="Generation Type"
-        variant="outlined"
-        density="compact"
-        rounded="lg"
-        hide-details
-        style="max-width: 360px; width: 100%;"
-        bg-color="surface"
-      />
+    <!-- Header + Regenerate button -->
+    <div class="d-flex align-center justify-space-between mb-8 flex-wrap ga-3">
+      <div>
+        <h2 class="text-h5 font-weight-bold mb-1">Your Recommendations</h2>
+        <p class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.5)">
+          Refreshes daily — hit Regenerate for a new batch any time.
+        </p>
+      </div>
       <v-btn
         color="primary"
-        size="large"
         rounded="pill"
         :loading="generateStore.isGenerating"
-        style="min-width: 180px; color: rgb(var(--v-theme-on-primary)); font-weight: 600; text-transform: none;"
-        @click="generate"
+        style="text-transform: none; font-weight: 600; color: rgb(var(--v-theme-on-primary));"
+        @click="regenerate"
       >
-        <v-icon start>mdi-creation</v-icon>
-        Generate
+        <v-icon start>mdi-refresh</v-icon>
+        Regenerate
       </v-btn>
-
-      <v-alert
-        v-if="generateError"
-        type="error"
-        variant="tonal"
-        density="compact"
-        closable
-        style="max-width: 360px; width: 100%;"
-        @click:close="generateError = null"
-      >
-        {{ generateError }}
-      </v-alert>
     </div>
 
     <!-- Results -->
-    <div v-if="results.length">
-      <div class="d-flex align-center justify-space-between mb-4">
-        <span class="section-label">GENERATED FOR YOU</span>
-        <span class="text-caption" style="color: rgba(var(--v-theme-on-surface), 0.4)">
-          {{ results.length }} movies
-        </span>
-      </div>
-      <v-row dense>
-        <v-col
-          v-for="pick in results"
-          :key="pick.movie.id"
-          cols="6"
-          sm="4"
-          md="3"
-          lg="2"
-        >
-          <div class="position-relative">
-            <div class="result-number">{{ pick.position }}</div>
-            <MovieCard :movie="pick.movie" />
-          </div>
-        </v-col>
-      </v-row>
-    </div>
+    <v-row v-if="generateStore.picks.length" dense>
+      <v-col
+        v-for="(movie, index) in generateStore.picks"
+        :key="movie.id"
+        cols="6"
+        sm="4"
+        md="3"
+        lg="2"
+      >
+        <div class="position-relative">
+          <div class="result-number">{{ index + 1 }}</div>
+          <MovieCard :movie="movie" />
+        </div>
+      </v-col>
+    </v-row>
 
-    <!-- Empty state (before generating) -->
+    <!-- Loading skeleton -->
+    <v-row v-else-if="generateStore.isGenerating" dense>
+      <v-col v-for="n in 10" :key="n" cols="6" sm="4" md="3" lg="2">
+        <v-skeleton-loader type="card" rounded="lg" />
+      </v-col>
+    </v-row>
+
+    <!-- Empty / error state -->
     <div v-else class="d-flex flex-column align-center justify-center py-16 text-center">
       <v-icon size="72" style="color: rgba(var(--v-theme-on-surface), 0.15)" class="mb-4">
         mdi-creation-outline
       </v-icon>
-      <h3 class="text-h6 font-weight-semibold mb-2">Your recommendations will appear here</h3>
+      <h3 class="text-h6 font-weight-semibold mb-2">No recommendations yet</h3>
       <p class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.5); max-width: 340px;">
-        Choose how you want your list generated, then hit Generate to get 10 personalised picks.
+        Hit Regenerate to get 10 movie picks.
       </p>
     </div>
 
@@ -84,39 +63,33 @@
 definePageMeta({ middleware: 'auth' })
 
 const generateStore = useGenerateStore()
-const movieStore = useMovieStore()
 
-try { await movieStore.fetchGenres() } catch { /* ignore */ }
+await generateStore.loadPicks()
 
-type GenMode = 'AllHistory' | 'Selected' | 'Genre' | 'FullAI'
-const generationType = ref<GenMode>('AllHistory')
-const selectedGenreId = ref<number | null>(null)
-const generateError = ref<string | null>(null)
-
-const generationTypes = [
-  { label: 'Based on all my movies', value: 'AllHistory' },
-  { label: 'Select specific movies', value: 'Selected' },
-  { label: 'By genre', value: 'Genre' },
-  { label: 'Let AI decide', value: 'FullAI' },
-] as const
-
-const generate = async () => {
-  generateError.value = null
-  try {
-    await generateStore.generate(
-      generationType.value,
-      undefined,
-      generationType.value === 'Genre' ? (selectedGenreId.value ?? undefined) : undefined
-    )
-  } catch {
-    generateError.value = 'Could not generate recommendations. Please try again.'
-  }
+async function regenerate() {
+  await generateStore.fetchFresh()
 }
-
-const results = computed(() =>
-  generateStore.lastGenerated?.movies ?? []
-)
 </script>
+
+<style scoped>
+.result-number {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  background: rgba(var(--v-theme-primary), 0.85);
+  color: rgb(var(--v-theme-on-primary));
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>
+
 
 <style scoped>
 .section-label {

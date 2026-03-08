@@ -74,6 +74,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+    var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await DbSeeder.SeedMoviesAsync(scope.ServiceProvider, seederLogger);
 }
 
 app.Run();
