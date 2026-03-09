@@ -90,6 +90,8 @@
     <v-main>
       <slot />
     </v-main>
+
+    <MovieModal />
   </div>
 </template>
 

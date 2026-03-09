@@ -1,5 +1,5 @@
 <template>
-  <div class="movie-card" @click="$emit('click', movie)">
+  <div class="movie-card" @click="movieModal.open(movie.id)">
     <!-- Poster -->
     <div class="movie-poster">
       <v-img
@@ -42,9 +42,7 @@ const props = defineProps<{
   }
 }>()
 
-defineEmits<{
-  click: [movie: object]
-}>()
+const movieModal = useMovieModal()
 
 const releaseYear = computed(() =>
   props.movie.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''
