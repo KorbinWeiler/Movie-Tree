@@ -78,13 +78,14 @@ public class AdminController(AppDbContext db) : ControllerBase
     [HttpPatch("movie/{id:int}/visibility")]
     public async Task<IActionResult> SetMovieVisibility(int id, [FromBody] SetVisibilityRequest body)
     {
-        var movie = await db.Movies.FindAsync(id);
-        if (movie is null) return NotFound(new { message = "Movie not found." });
+        bool exists = await db.Movies.AnyAsync(m => m.Id == id);
+        if (!exists) return NotFound(new { message = "Movie not found." });
 
-        movie.IsVisible = body.IsVisible;
-        await db.SaveChangesAsync();
+        await db.Movies
+            .Where(m => m.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.IsVisible, body.IsVisible));
 
-        return Ok(new { id = movie.Id, isVisible = movie.IsVisible });
+        return Ok(new { id, isVisible = body.IsVisible });
     }
 
     // GET /api/admin/hidden-movies?q=&page=1&pageSize=30
