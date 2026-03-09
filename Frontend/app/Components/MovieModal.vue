@@ -176,6 +176,45 @@
                 </div>
               </div>
             </div>
+
+            <!-- Admin: hide / show movie -->
+            <template v-if="auth.isAdmin">
+              <v-divider />
+              <div v-if="!confirmHide">
+                <v-btn
+                  :variant="movie.isVisible === false ? 'flat' : 'outlined'"
+                  :color="movie.isVisible === false ? 'success' : 'warning'"
+                  rounded="pill"
+                  size="small"
+                  style="text-transform: none"
+                  @click="movie.isVisible === false ? unhideMovie() : (confirmHide = true)"
+                >
+                  <v-icon start size="16">{{ movie.isVisible === false ? 'mdi-eye-outline' : 'mdi-eye-off-outline' }}</v-icon>
+                  {{ movie.isVisible === false ? 'Show Movie' : 'Hide Movie' }}
+                </v-btn>
+              </div>
+              <div v-else class="d-flex align-center flex-wrap ga-2">
+                <span class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.7)">
+                  Hide this movie from all users?
+                </span>
+                <v-btn
+                  color="warning"
+                  variant="flat"
+                  size="small"
+                  rounded="pill"
+                  :loading="visibilityLoading"
+                  style="text-transform: none"
+                  @click="hideMovie"
+                >Hide</v-btn>
+                <v-btn
+                  variant="text"
+                  size="small"
+                  rounded="pill"
+                  style="text-transform: none"
+                  @click="confirmHide = false"
+                >Cancel</v-btn>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -198,6 +237,8 @@ const reviewText = ref('')
 const reviewVisibility = ref<'Public' | 'Friends' | 'Private'>('Public')
 const watchLaterLoading = ref(false)
 const reviewLoading = ref(false)
+const confirmHide = ref(false)
+const visibilityLoading = ref(false)
 
 const isInWatchLater = computed(() =>
   userStore.watchLater.some(w => w.movie.id === movieId.value)
@@ -217,6 +258,7 @@ watch(isOpen, async (open) => {
   if (!open) return
   movie.value = null
   showReviewForm.value = false
+  confirmHide.value = false
   reviewRating.value = 7
   reviewText.value = ''
   reviewVisibility.value = 'Public'
@@ -250,6 +292,29 @@ const submitReview = async () => {
     showReviewForm.value = false
   } finally {
     reviewLoading.value = false
+  }
+}
+
+const hideMovie = async () => {
+  if (!movie.value) return
+  visibilityLoading.value = true
+  try {
+    await movieStore.setMovieVisibility(movie.value.id, false)
+    movie.value = { ...movie.value, isVisible: false }
+    confirmHide.value = false
+  } finally {
+    visibilityLoading.value = false
+  }
+}
+
+const unhideMovie = async () => {
+  if (!movie.value) return
+  visibilityLoading.value = true
+  try {
+    await movieStore.setMovieVisibility(movie.value.id, true)
+    movie.value = { ...movie.value, isVisible: true }
+  } finally {
+    visibilityLoading.value = false
   }
 }
 </script>

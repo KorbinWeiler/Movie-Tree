@@ -27,7 +27,7 @@ export const useGenerateStore = defineStore('generate', {
       if (raw) {
         try {
           const stored: StoredPicks = JSON.parse(raw)
-          if (stored.date === todayString()) {
+          if (stored.date === todayString() && stored.movies.length > 0) {
             this.picks = stored.movies
             return
           }

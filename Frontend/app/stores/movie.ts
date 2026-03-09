@@ -18,6 +18,7 @@ export interface MovieSummaryDto {
 export interface MovieDetailDto extends MovieSummaryDto {
   description: string | null
   runtimeMinutes: number | null
+  isVisible: boolean
 }
 
 export const useMovieStore = defineStore('movie', {
@@ -61,6 +62,28 @@ export const useMovieStore = defineStore('movie', {
         this.currentMovie = await apiFetch<MovieDetailDto>(`/movie/${id}`)
       } catch { this.currentMovie = null }
       return this.currentMovie
+    },
+
+    async setMovieVisibility(id: number, isVisible: boolean) {
+      const { apiFetch } = useApi()
+      await apiFetch(`/admin/movie/${id}/visibility`, {
+        method: 'PATCH',
+        body: { isVisible },
+      })
+      if (!isVisible) {
+        this.trending = this.trending.filter(m => m.id !== id)
+        this.searchResults = this.searchResults.filter(m => m.id !== id)
+      }
+      if (this.currentMovie?.id === id) this.currentMovie = null
+    },
+
+    async fetchHiddenMovies(q?: string, page = 1) {
+      const { apiFetch } = useApi()
+      const params = new URLSearchParams({ page: String(page), pageSize: '30' })
+      if (q) params.set('q', q)
+      return apiFetch<{ total: number; movies: { id: number; title: string; posterUrl: string | null; releaseDate: string | null }[] }>(
+        `/admin/hidden-movies?${params}`
+      )
     },
   },
 })

@@ -24,7 +24,7 @@ public class FeedController(AppDbContext db) : ControllerBase
         var reviews = await db.Reviews
             .Include(r => r.User)
             .Include(r => r.Movie)
-            .Where(r => r.Visibility == ReviewVisibility.Public)
+            .Where(r => r.Visibility == ReviewVisibility.Public && r.Movie.IsVisible)
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -51,7 +51,8 @@ public class FeedController(AppDbContext db) : ControllerBase
             .Include(r => r.User)
             .Include(r => r.Movie)
             .Where(r => friendIds.Contains(r.UserId) &&
-                        r.Visibility != ReviewVisibility.Private)
+                        r.Visibility != ReviewVisibility.Private &&
+                        r.Movie.IsVisible)
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

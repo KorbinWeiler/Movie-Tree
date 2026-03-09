@@ -22,7 +22,7 @@ public class ReviewController(AppDbContext db) : ControllerBase
         var reviews = await db.Reviews
             .Include(r => r.User)
             .Include(r => r.Movie)
-            .Where(r => r.MovieId == movieId && r.Visibility == ReviewVisibility.Public)
+            .Where(r => r.MovieId == movieId && r.Visibility == ReviewVisibility.Public && r.Movie.IsVisible)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
@@ -37,7 +37,7 @@ public class ReviewController(AppDbContext db) : ControllerBase
         if (req.Rating < 1 || req.Rating > 10)
             return BadRequest("Rating must be between 1 and 10.");
 
-        var movieExists = await db.Movies.AnyAsync(m => m.Id == req.MovieId);
+        var movieExists = await db.Movies.AnyAsync(m => m.Id == req.MovieId && m.IsVisible);
         if (!movieExists) return NotFound("Movie not found.");
 
         var existing = await db.Reviews.AnyAsync(r => r.UserId == CurrentUserId && r.MovieId == req.MovieId);

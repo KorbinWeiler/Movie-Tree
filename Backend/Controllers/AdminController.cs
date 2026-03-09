@@ -73,4 +73,46 @@ public class AdminController(AppDbContext db) : ControllerBase
 
         return Ok(new { added, skipped });
     }
+
+    // PATCH /api/admin/movie/{id}/visibility
+    [HttpPatch("movie/{id:int}/visibility")]
+    public async Task<IActionResult> SetMovieVisibility(int id, [FromBody] SetVisibilityRequest body)
+    {
+        var movie = await db.Movies.FindAsync(id);
+        if (movie is null) return NotFound(new { message = "Movie not found." });
+
+        movie.IsVisible = body.IsVisible;
+        await db.SaveChangesAsync();
+
+        return Ok(new { id = movie.Id, isVisible = movie.IsVisible });
+    }
+
+    // GET /api/admin/hidden-movies?q=&page=1&pageSize=30
+    [HttpGet("hidden-movies")]
+    public async Task<IActionResult> GetHiddenMovies(
+        [FromQuery] string? q,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 30)
+    {
+        if (pageSize > 100) pageSize = 100;
+
+        var query = db.Movies
+            .Where(m => !m.IsVisible)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(m => m.Title.Contains(q));
+
+        var total = await query.CountAsync();
+        var movies = await query
+            .OrderBy(m => m.Title)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(m => new { m.Id, m.Title, m.PosterUrl, m.ReleaseDate })
+            .ToListAsync();
+
+        return Ok(new { total, movies });
+    }
 }
+
+public record SetVisibilityRequest(bool IsVisible);

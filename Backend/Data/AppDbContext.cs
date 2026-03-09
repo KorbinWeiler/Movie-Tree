@@ -20,6 +20,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .Property(m => m.Id)
             .ValueGeneratedNever();
 
+        builder.Entity<Movie>()
+            .Property(m => m.IsVisible)
+            .HasDefaultValue(true);
+
         builder.Entity<ApplicationUser>()
             .Property(u => u.CreatedAt)
             .HasDefaultValueSql("GETUTCDATE()");

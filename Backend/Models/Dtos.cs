@@ -21,7 +21,8 @@ public record MovieDetailDto(
     string? PosterUrl,
     double? AverageRating,
     int ReviewCount,
-    IEnumerable<GenreDto> Genres
+    IEnumerable<GenreDto> Genres,
+    bool IsVisible
 );
 
 // ── Review DTOs ─────────────────────────────────────────────────────────────

@@ -17,7 +17,8 @@ public class MovieController(AppDbContext db) : ControllerBase
         m.Id, m.Title, m.Description, m.ReleaseDate, m.RuntimeMinutes, m.PosterUrl,
         m.Reviews.Count > 0 ? Math.Round(m.Reviews.Average(r => (double)r.Rating), 1) : null,
         m.Reviews.Count,
-        m.MovieGenres.Select(mg => new GenreDto(mg.Genre.Id, mg.Genre.Name))
+        m.MovieGenres.Select(mg => new GenreDto(mg.Genre.Id, mg.Genre.Name)),
+        m.IsVisible
     );
 
     // GET /api/movie?q=title&genreId=1&page=1&pageSize=20
@@ -33,6 +34,7 @@ public class MovieController(AppDbContext db) : ControllerBase
         var query = db.Movies
             .Include(m => m.Reviews)
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+            .Where(m => m.IsVisible)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
@@ -60,7 +62,7 @@ public class MovieController(AppDbContext db) : ControllerBase
         var movies = await db.Movies
             .Include(m => m.Reviews)
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
-            .Where(m => m.Reviews.Any(r => r.CreatedAt >= cutoff))
+            .Where(m => m.IsVisible && m.Reviews.Any(r => r.CreatedAt >= cutoff))
             .OrderByDescending(m => m.Reviews.Count(r => r.CreatedAt >= cutoff))
             .ThenByDescending(m => m.Reviews.Average(r => (double)r.Rating))
             .Take(count)
@@ -74,13 +76,14 @@ public class MovieController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> TempTrending([FromQuery] int count = 10)
     {
         if (count > 10) count = 10;
-        var total = await db.Movies.CountAsync();
+        var total = await db.Movies.CountAsync(m => m.IsVisible);
         if (total == 0) return Ok(Array.Empty<MovieSummaryDto>());
 
         var skip = new Random().Next(0, Math.Max(0, total - count));
         var movies = await db.Movies
             .Include(m => m.Reviews)
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+            .Where(m => m.IsVisible)
             .Skip(skip)
             .Take(count)
             .ToListAsync();
@@ -92,10 +95,12 @@ public class MovieController(AppDbContext db) : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
+        // Admins can fetch hidden movies (to unhide from the modal)
+        var isAdmin = User.IsInRole("Admin");
         var movie = await db.Movies
             .Include(m => m.Reviews)
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
-            .FirstOrDefaultAsync(m => m.Id == id);
+            .FirstOrDefaultAsync(m => m.Id == id && (m.IsVisible || isAdmin));
 
         if (movie is null) return NotFound();
         return Ok(ToDetail(movie));

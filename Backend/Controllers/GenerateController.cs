@@ -16,7 +16,7 @@ public class GenerateController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Generate()
     {
-        var totalCount = await db.Movies.CountAsync();
+        var totalCount = await db.Movies.CountAsync(m => m.IsVisible);
         if (totalCount == 0) return Ok(Array.Empty<MovieSummaryDto>());
 
         var skip = new Random().Next(0, Math.Max(0, totalCount - 10));
@@ -24,6 +24,7 @@ public class GenerateController(AppDbContext db) : ControllerBase
         var movies = await db.Movies
             .Include(m => m.Reviews)
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+            .Where(m => m.IsVisible)
             .Skip(skip)
             .Take(10)
             .ToListAsync();

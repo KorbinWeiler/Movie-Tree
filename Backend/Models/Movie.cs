@@ -6,6 +6,7 @@ public class Movie
     public DateOnly? ReleaseDate { get; set; }
     public int? RuntimeMinutes { get; set; }
     public string? PosterUrl { get; set; }
+    public bool IsVisible { get; set; } = true;
 
     public ICollection<MovieGenre> MovieGenres { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];
