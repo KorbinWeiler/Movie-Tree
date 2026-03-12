@@ -57,9 +57,22 @@ export const useMovieStore = defineStore('movie', {
     },
 
     async fetchById(id: number) {
+      const cacheKey = `movie_detail_${id}`
+
+      const cached = import.meta.client ? localStorage.getItem(cacheKey) : null
+      if (cached) {
+        try {
+          this.currentMovie = JSON.parse(cached) as MovieDetailDto
+          return this.currentMovie
+        } catch { /* corrupt cache — fall through to API */ }
+      }
+
       const { apiFetch } = useApi()
       try {
         this.currentMovie = await apiFetch<MovieDetailDto>(`/movie/${id}`)
+        if (import.meta.client && this.currentMovie) {
+          localStorage.setItem(cacheKey, JSON.stringify(this.currentMovie))
+        }
       } catch { this.currentMovie = null }
       return this.currentMovie
     },

@@ -102,7 +102,22 @@ public class MovieController(AppDbContext db) : ControllerBase
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
             .FirstOrDefaultAsync(m => m.Id == id && (m.IsVisible || isAdmin));
 
-        if (movie is null) return NotFound();
+        if (movie is null || movie!.Description is null)
+        {
+            try
+            {
+                var tmdb = new TMDBService(db);
+                var detail = await tmdb.GetMovieByIdAsync(id);
+                movie = await db.Movies
+                    .Include(m => m.Reviews)
+                    .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+                    .FirstOrDefaultAsync(m => m.Id == id);
+            }
+            catch (Exception ex)
+            {
+                return NotFound($"Movie with ID {id} not found. Error: {ex.Message}");
+            }
+        };
         return Ok(ToDetail(movie));
     }
 
