@@ -64,15 +64,9 @@ public static class DbSeeder
         var db = services.GetRequiredService<AppDbContext>();
 
         var existingIds = await db.Movies.Select(m => m.Id).ToHashSetAsync();
-        if (existingIds.Count > 0)
-        {
-            logger.LogInformation("Movies table already has {Count} entries — skipping seed.", existingIds.Count);
-            return;
-        }
+        logger.LogInformation("Seeding movies from '{Path}' ({Existing} already in DB)...", filePath, existingIds.Count);
 
-        logger.LogInformation("Seeding movies from '{Path}'...", filePath);
-
-        var toAdd = new List<Movie>(500);
+        var toAdd = new List<Movie>(1000);
         int added = 0;
         int skipped = 0;
 
@@ -104,11 +98,23 @@ public static class DbSeeder
                 existingIds.Add(id);
                 added++;
 
-                if (toAdd.Count >= 500)
+                if (toAdd.Count >= 1000)
                 {
-                    db.Movies.AddRange(toAdd);
-                    await db.SaveChangesAsync();
+                    try
+                    {
+                        db.Movies.AddRange(toAdd);
+                        await db.SaveChangesAsync();
+                        db.ChangeTracker.Clear();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning("Batch save failed: {Msg} — skipping batch.", ex.Message);
+                        db.ChangeTracker.Clear();
+                    }
                     toAdd.Clear();
+
+                    if (added % 50_000 == 0)
+                        logger.LogInformation("  {Added} movies added so far...", added);
                 }
             }
             catch (JsonException) { /* skip malformed lines */ }
@@ -116,8 +122,16 @@ public static class DbSeeder
 
         if (toAdd.Count > 0)
         {
-            db.Movies.AddRange(toAdd);
-            await db.SaveChangesAsync();
+            try
+            {
+                db.Movies.AddRange(toAdd);
+                await db.SaveChangesAsync();
+                db.ChangeTracker.Clear();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Final batch save failed: {Msg}", ex.Message);
+            }
         }
 
         logger.LogInformation("Seed complete — {Added} added, {Skipped} skipped.", added, skipped);

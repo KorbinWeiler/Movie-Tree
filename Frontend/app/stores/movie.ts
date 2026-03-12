@@ -41,7 +41,7 @@ export const useMovieStore = defineStore('movie', {
 
     async search(q: string, genreId?: number) {
       const { apiFetch } = useApi()
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ pageSize: '50' })
       if (q) params.set('q', q)
       if (genreId) params.set('genreId', String(genreId))
       try {
@@ -72,6 +72,14 @@ export const useMovieStore = defineStore('movie', {
         this.currentMovie = await apiFetch<MovieDetailDto>(`/movie/${id}`)
         if (import.meta.client && this.currentMovie) {
           localStorage.setItem(cacheKey, JSON.stringify(this.currentMovie))
+        }
+        // Backfill posterUrl on any card already in search/trending lists
+        if (this.currentMovie?.posterUrl) {
+          const poster = this.currentMovie.posterUrl
+          const sr = this.searchResults.find(m => m.id === id)
+          if (sr) sr.posterUrl = poster
+          const tr = this.trending.find(m => m.id === id)
+          if (tr) tr.posterUrl = poster
         }
       } catch { this.currentMovie = null }
       return this.currentMovie

@@ -15,7 +15,7 @@ public class TMDBService
         _db = db;
 
         var apiKey = Environment.GetEnvironmentVariable("TMDB_READ_API_KEY")
-            ?? throw new InvalidOperationException("TMDB_READ_API_KEY is not configured.");
+            ?? throw new InvalidOperationException("TMDB_READ_API_KEY environment variable is not set.");
 
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Authorization =
@@ -26,6 +26,7 @@ public class TMDBService
 
     public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)
     {
+        Console.WriteLine($"Fetching movie {id} from TMDB...");
         var response = await _httpClient.GetAsync($"{BaseUrl}/movie/{id}");
         response.EnsureSuccessStatusCode();
 
@@ -45,19 +46,28 @@ public class TMDBService
             DateOnly.TryParse(rd.GetString(), out var parsed))
             releaseDate = parsed;
 
-        var movie = new Movie
+        var existing = await _db.Movies.FindAsync(id);
+        if (existing is not null)
         {
-            Id = id,
-            Title = root.GetProperty("title").GetString()!,
-            Description = root.TryGetProperty("overview", out var ov) ? ov.GetString() : null,
-            ReleaseDate = releaseDate,
-            RuntimeMinutes = root.TryGetProperty("runtime", out var rt) && rt.ValueKind == JsonValueKind.Number
-                ? rt.GetInt32()
-                : null,
-            PosterUrl = posterUrl,
-        };
-
-        _db.Movies.Add(movie);
+            existing.Title = root.GetProperty("title").GetString()!;
+            existing.Description = root.TryGetProperty("overview", out var ov2) ? ov2.GetString() : null;
+            existing.ReleaseDate = releaseDate;
+            existing.RuntimeMinutes = root.TryGetProperty("runtime", out var rt2) && rt2.ValueKind == JsonValueKind.Number ? rt2.GetInt32() : null;
+            existing.PosterUrl = posterUrl;
+        }
+        else
+        {
+            var movie = new Movie
+            {
+                Id = id,
+                Title = root.GetProperty("title").GetString()!,
+                Description = root.TryGetProperty("overview", out var ov) ? ov.GetString() : null,
+                ReleaseDate = releaseDate,
+                RuntimeMinutes = root.TryGetProperty("runtime", out var rt) && rt.ValueKind == JsonValueKind.Number ? rt.GetInt32() : null,
+                PosterUrl = posterUrl,
+            };
+            _db.Movies.Add(movie);
+        }
 
         if (root.TryGetProperty("genres", out var genresEl))
         {
@@ -70,28 +80,35 @@ public class TMDBService
                 .Select(g => g.Id)
                 .ToListAsync();
 
-            foreach (var genreId in validIds)
+            // Only add genre links that don't already exist
+            var existingGenreIds = await _db.MovieGenres
+                .Where(mg => mg.MovieId == id)
+                .Select(mg => mg.GenreId)
+                .ToHashSetAsync();
+
+            foreach (var genreId in validIds.Where(g => !existingGenreIds.Contains(g)))
                 _db.MovieGenres.Add(new MovieGenre { MovieId = id, GenreId = genreId });
         }
 
         await _db.SaveChangesAsync();
 
+        var saved = await _db.Movies.FindAsync(id);
         var genres = await _db.MovieGenres
             .Where(mg => mg.MovieId == id)
             .Select(mg => new GenreDto(mg.GenreId, mg.Genre.Name))
             .ToListAsync();
 
         return new MovieDetailDto(
-            Id: movie.Id,
-            Title: movie.Title,
-            Description: movie.Description,
-            ReleaseDate: movie.ReleaseDate,
-            RuntimeMinutes: movie.RuntimeMinutes,
-            PosterUrl: movie.PosterUrl,
+            Id: saved!.Id,
+            Title: saved.Title,
+            Description: saved.Description,
+            ReleaseDate: saved.ReleaseDate,
+            RuntimeMinutes: saved.RuntimeMinutes,
+            PosterUrl: saved.PosterUrl,
             AverageRating: null,
             ReviewCount: 0,
             Genres: genres,
-            IsVisible: movie.IsVisible
+            IsVisible: saved.IsVisible
         );
     }
 }

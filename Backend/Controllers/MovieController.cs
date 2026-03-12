@@ -108,10 +108,8 @@ public class MovieController(AppDbContext db) : ControllerBase
             {
                 var tmdb = new TMDBService(db);
                 var detail = await tmdb.GetMovieByIdAsync(id);
-                movie = await db.Movies
-                    .Include(m => m.Reviews)
-                    .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
-                    .FirstOrDefaultAsync(m => m.Id == id);
+                if (detail is null) return NotFound($"Movie with ID {id} not found.");
+                return Ok(detail);
             }
             catch (Exception ex)
             {

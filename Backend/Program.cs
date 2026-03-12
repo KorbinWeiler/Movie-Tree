@@ -4,6 +4,22 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+// Load .env file from the solution root (one level above the Backend folder)
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+if (File.Exists(envFile))
+{
+    foreach (var line in File.ReadAllLines(envFile))
+    {
+        var trimmed = line.Trim();
+        if (trimmed.Length == 0 || trimmed.StartsWith('#')) continue;
+        var idx = trimmed.IndexOf('=');
+        if (idx <= 0) continue;
+        var envKey = trimmed[..idx].Trim();
+        var value = trimmed[(idx + 1)..].Trim();
+        Environment.SetEnvironmentVariable(envKey, value);
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -51,7 +67,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<TMDBService>();
-builder.Services.AddScoped<SearchService>();
+//builder.Services.AddScoped<SearchService>();
 builder.Services.AddScoped<EmbeddedService>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();

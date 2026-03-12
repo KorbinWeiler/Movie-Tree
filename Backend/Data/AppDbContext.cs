@@ -15,9 +15,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         base.OnModelCreating(builder);
 
-        // Movie.Id comes from TMDB — never auto-generate
+        // Movie.Id and Genre.Id come from TMDB — never auto-generate
         builder.Entity<Movie>()
             .Property(m => m.Id)
+            .ValueGeneratedNever();
+
+        builder.Entity<Genre>()
+            .Property(g => g.Id)
             .ValueGeneratedNever();
 
         builder.Entity<Movie>()
