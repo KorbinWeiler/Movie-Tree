@@ -7,6 +7,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Backend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Backend/**'
   workflow_dispatch:
 
 jobs:
@@ -62,4 +69,5 @@ jobs:
           app-name: 'Movie-Tree-Server'
           slot-name: 'Production'
           package: .
+
           
