@@ -19,7 +19,8 @@ export const useGenerateStore = defineStore('generate', {
   }),
 
   actions: {
-    // Load from localStorage; fetch fresh if missing or from a previous day
+    // Load from localStorage; fetch fresh if missing or from a previous day.
+    // When a valid cache exists, re-fetch the same movie IDs so ratings/details stay current.
     async loadPicks() {
       if (!import.meta.client) return
 
@@ -28,13 +29,35 @@ export const useGenerateStore = defineStore('generate', {
         try {
           const stored: StoredPicks = JSON.parse(raw)
           if (stored.date === todayString() && stored.movies.length > 0) {
+            // Show cached data immediately, then refresh in the background
             this.picks = stored.movies
+            this.refreshCachedPicks(stored.movies.map(m => m.id))
             return
           }
         } catch { /* corrupted — fall through to fetch */ }
       }
 
       await this.fetchFresh()
+    },
+
+    // Re-fetch fresh MovieSummaryDto data for the given IDs and update the cache
+    async refreshCachedPicks(ids: number[]) {
+      if (!ids.length) return
+      const { apiFetch } = useApi()
+      try {
+        const fresh = await apiFetch<MovieSummaryDto[]>(`/movie/batch?ids=${ids.join(',')}`)
+        if (fresh.length > 0) {
+          this.picks = fresh
+          this.persistPicks()
+        }
+      } catch { /* keep showing cached data */ }
+    },
+
+    // Persist the current in-memory picks to localStorage
+    persistPicks() {
+      if (!import.meta.client || !this.picks.length) return
+      const stored: StoredPicks = { date: todayString(), movies: this.picks }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
     },
 
     // Always fetch a new set and persist it

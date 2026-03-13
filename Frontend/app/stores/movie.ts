@@ -60,13 +60,19 @@ export const useMovieStore = defineStore('movie', {
       const { apiFetch } = useApi()
       try {
         this.currentMovie = await apiFetch<MovieDetailDto>(`/movie/${id}`)
-        // Backfill posterUrl on any card already in search/trending lists
+        // Backfill posterUrl on any card already in search/trending/ai-picks lists
         if (this.currentMovie?.posterUrl) {
           const poster = this.currentMovie.posterUrl
           const sr = this.searchResults.find(m => m.id === id)
           if (sr) sr.posterUrl = poster
           const tr = this.trending.find(m => m.id === id)
           if (tr) tr.posterUrl = poster
+          const generateStore = useGenerateStore()
+          const gp = generateStore.picks.find(m => m.id === id)
+          if (gp) {
+            gp.posterUrl = poster
+            generateStore.persistPicks()
+          }
         }
       } catch { this.currentMovie = null }
       return this.currentMovie

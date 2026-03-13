@@ -119,6 +119,59 @@ public class MovieController(AppDbContext db) : ControllerBase
         return Ok(ToDetail(movie));
     }
 
+    // GET /api/movie/batch?ids=1,2,3
+    [HttpGet("batch")]
+    public async Task<IActionResult> GetBatch([FromQuery] string ids)
+    {
+        if (string.IsNullOrWhiteSpace(ids)) return Ok(Array.Empty<MovieSummaryDto>());
+
+        var idList = ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.TryParse(s.Trim(), out var n) ? (int?)n : null)
+            .Where(n => n.HasValue)
+            .Select(n => n!.Value)
+            .Distinct()
+            .Take(50)
+            .ToList();
+
+        var movies = await db.Movies
+            .Include(m => m.Reviews)
+            .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+            .Where(m => idList.Contains(m.Id) && m.IsVisible)
+            .ToListAsync();
+
+        // For any movie missing a poster, fetch from TMDB in parallel and persist
+        var missingPoster = movies.Where(m => m.PosterUrl is null).ToList();
+        if (missingPoster.Count > 0)
+        {
+            try
+            {
+                var tmdb = new TMDBService(db);
+                await Task.WhenAll(missingPoster.Select(m => tmdb.GetMovieByIdAsync(m.Id)));
+                // Reload the enriched rows so the response has the updated poster URLs
+                var enrichedIds = missingPoster.Select(m => m.Id).ToList();
+                var enriched = await db.Movies
+                    .Include(m => m.Reviews)
+                    .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+                    .Where(m => enrichedIds.Contains(m.Id))
+                    .ToListAsync();
+                foreach (var e in enriched)
+                {
+                    var idx = movies.FindIndex(m => m.Id == e.Id);
+                    if (idx >= 0) movies[idx] = e;
+                }
+            }
+            catch { /* TMDB unavailable — return what we have */ }
+        }
+
+        // Return in the same order as the requested ids
+        var ordered = idList
+            .Select(id => movies.FirstOrDefault(m => m.Id == id))
+            .Where(m => m is not null)
+            .Select(m => ToSummary(m!));
+
+        return Ok(ordered);
+    }
+
     // GET /api/movie/genres
     [HttpGet("genres")]
     public async Task<IActionResult> GetGenres()
