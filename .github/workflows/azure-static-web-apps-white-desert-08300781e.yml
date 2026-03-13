@@ -35,6 +35,8 @@ jobs:
       - name: Build Application
         working-directory: ./Frontend
         run: npm run generate
+        env:
+          NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
