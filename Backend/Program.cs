@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 
 // Load .env file from the solution root (one level above the Backend folder)
 var envFile = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+Console.WriteLine($"DIAG: Working dir={Directory.GetCurrentDirectory()}");
+Console.WriteLine($"DIAG: Raw env ConnectionStrings__Default={(Environment.GetEnvironmentVariable("ConnectionStrings__Default") ?? "(not set)")}");
 if (File.Exists(envFile))
 {
     foreach (var line in File.ReadAllLines(envFile))
