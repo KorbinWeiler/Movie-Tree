@@ -86,6 +86,12 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
+    options.AddPolicy("AllowStaticWebsite", policy => {
+    // TODO: Update this to the actual production frontend URL before launch
+        policy.WithOrigins("https://white-desert-08300781e.6.azurestaticapps.net")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
 var app = builder.Build();
@@ -93,7 +99,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
-app.UseCors();
+app.UseCors("AllowStaticWebsite");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
