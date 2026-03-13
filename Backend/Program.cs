@@ -96,6 +96,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// TEMP: log connection string source for debugging
+var connStr = builder.Configuration.GetConnectionString("Default") ?? "(null)";
+var masked = connStr.Length > 30 ? connStr[..30] + "..." : connStr;
+app.Logger.LogWarning("DIAG: ConnectionStrings:Default starts with: {ConnStr}", masked);
+
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
