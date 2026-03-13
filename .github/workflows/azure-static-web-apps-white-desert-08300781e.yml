@@ -12,6 +12,8 @@ on:
       - main
     paths:
       - 'Frontend/**'
+      
+  workflow_dispatch:
 
 jobs:
   build_and_deploy_job:
@@ -57,4 +59,5 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_WHITE_DESERT_08300781E }}
           action: "close"
+
 
