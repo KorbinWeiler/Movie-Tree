@@ -18,7 +18,19 @@
       <v-spacer />
 
       <!-- Nav Links -->
+       
       <div class="nav-links d-none d-sm-flex align-center ga-1">
+        <!-- Search -->
+        <v-btn
+          :to="'/search'"
+          variant="text"
+          :color="route.path === '/search' ? 'primary' : 'default'"
+          icon
+          size="small"
+        >
+          <v-icon>mdi-magnify</v-icon>
+        </v-btn>
+        
         <v-btn
           v-for="link in navLinks"
           :key="link.to"
@@ -31,46 +43,102 @@
         >
           {{ link.label }}
         </v-btn>
-
-        <!-- Search -->
-        <v-btn
-          :to="'/search'"
-          variant="text"
-          :color="route.path === '/search' ? 'primary' : 'default'"
-          icon
-          size="small"
-        >
-          <v-icon>mdi-magnify</v-icon>
-        </v-btn>
       </div>
 
-      <!-- Settings / Menu -->
-      <v-btn
-        :to="'/settings'"
-        variant="text"
-        icon
-        size="small"
-        class="mr-2 ml-1"
-        :color="route.path === '/settings' ? 'primary' : 'default'"
-      >
-        <v-icon>mdi-menu</v-icon>
-      </v-btn>
+      <!-- Menu dropdown -->
+      <v-menu location="bottom end" :offset="8" :close-on-content-click="true">
+        <template #activator="{ props: menuProps }">
+          <v-btn
+            v-bind="menuProps"
+            variant="text"
+            icon
+            size="small"
+            class="ml-1 mr-2"
+          >
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+        </template>
+
+        <v-list min-width="180" rounded="lg" bg-color="surface" density="compact" class="py-1">
+          <!-- Signed-in header -->
+          <template v-if="authStore.isLoggedIn">
+            <v-list-item class="px-4 pt-2 pb-1" :ripple="false" style="cursor: default">
+              <div class="d-flex align-center ga-2">
+                <v-avatar size="28" color="primary">
+                  <span class="text-caption font-weight-bold" style="color: rgb(var(--v-theme-on-primary))">
+                    {{ authStore.user?.userName?.charAt(0).toUpperCase() }}
+                  </span>
+                </v-avatar>
+                <span class="text-body-2 font-weight-medium">{{ authStore.user?.userName }}</span>
+              </div>
+            </v-list-item>
+            <v-divider class="mb-1" />
+            <v-list-item
+              prepend-icon="mdi-account-outline"
+              title="Profile"
+              to="/profile"
+              rounded="lg"
+              class="mx-1"
+            />
+          </template>
+
+          <v-list-item
+            prepend-icon="mdi-cog-outline"
+            title="Settings"
+            to="/settings"
+            rounded="lg"
+            class="mx-1"
+          />
+
+          <template v-if="authStore.isLoggedIn">
+            <v-divider class="my-1" />
+            <v-list-item
+              prepend-icon="mdi-logout"
+              title="Sign out"
+              rounded="lg"
+              class="mx-1"
+              style="color: rgba(var(--v-theme-on-surface), 0.7)"
+              @click="logout"
+            />
+          </template>
+
+          <template v-else>
+            <v-divider class="my-1" />
+            <v-list-item
+              prepend-icon="mdi-login"
+              title="Sign in"
+              to="/login"
+              rounded="lg"
+              class="mx-1"
+            />
+          </template>
+        </v-list>
+      </v-menu>
     </v-app-bar>
 
     <v-main>
       <slot />
     </v-main>
+
+    <MovieModal />
   </div>
 </template>
 
 <script setup lang="ts">
 const route = useRoute()
+const authStore = useAuthStore()
 
-const navLinks = [
+const navLinks = computed(() => [
   { label: 'Feed', to: '/feed' },
   { label: 'Recommendations', to: '/generate' },
   { label: 'Your Movies', to: '/your-movies' },
-]
+  ...(authStore.isAdmin ? [{ label: 'Admin', to: '/admin' }] : []),
+])
+
+const logout = () => {
+  authStore.logout()
+  navigateTo('/')
+}
 </script>
 
 <style scoped>

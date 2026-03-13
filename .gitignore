@@ -211,3 +211,10 @@ _ReSharper*/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+*.gz
+
+# TMDB movie ID export files
+movie_ids_*.json/
+movie_ids_*.json
+Genres.json
