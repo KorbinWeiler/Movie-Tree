@@ -68,15 +68,15 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<TMDBService>();
 //builder.Services.AddScoped<SearchService>();
-builder.Services.AddScoped<EmbeddedService>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var endpoint = config["EmbeddedService:Endpoint"] 
-        ?? throw new InvalidOperationException("EmbeddedService:Endpoint is not configured.");
-    var apiKey = config["EmbeddedService:ApiKey"] 
-        ?? throw new InvalidOperationException("EmbeddedService:ApiKey is not configured.");
-    return new EmbeddedService(endpoint, apiKey);
-});
+// builder.Services.AddScoped<EmbeddedService>(sp =>
+// {
+//     var config = sp.GetRequiredService<IConfiguration>();
+//     var endpoint = config["EmbeddedService:Endpoint"] 
+//         ?? throw new InvalidOperationException("EmbeddedService:Endpoint is not configured.");
+//     var apiKey = config["EmbeddedService:ApiKey"] 
+//         ?? throw new InvalidOperationException("EmbeddedService:ApiKey is not configured.");
+//     return new EmbeddedService(endpoint, apiKey);
+// });
 
 builder.Services.AddCors(options =>
 {
