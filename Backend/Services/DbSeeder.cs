@@ -47,17 +47,14 @@ public static class DbSeeder
     public static async Task SeedMoviesAsync(IServiceProvider services, ILogger logger)
     {
         var config = services.GetRequiredService<IConfiguration>();
-        var filePath = config["Seeder:MovieFilePath"];
+        var hostEnvironment = services.GetRequiredService<IHostEnvironment>();
+        var filePath = ResolveMovieSeedPath(config["Seeder:MovieFilePath"], hostEnvironment);
 
-        if (string.IsNullOrWhiteSpace(filePath))
+        if (filePath is null)
         {
-            logger.LogInformation("Seeder:MovieFilePath not configured — skipping movie seed.");
-            return;
-        }
-
-        if (!File.Exists(filePath))
-        {
-            logger.LogWarning("Movie seed file not found at '{Path}' — skipping.", filePath);
+            logger.LogWarning(
+                "Movie seed file not found. Checked configured path '{ConfiguredPath}' and common fallback locations.",
+                config["Seeder:MovieFilePath"] ?? "(null)");
             return;
         }
 
@@ -135,5 +132,44 @@ public static class DbSeeder
         }
 
         logger.LogInformation("Seed complete — {Added} added, {Skipped} skipped.", added, skipped);
+    }
+
+    private static string? ResolveMovieSeedPath(string? configuredPath, IHostEnvironment hostEnvironment)
+    {
+        var candidates = new List<string>();
+        var comparer = StringComparer.OrdinalIgnoreCase;
+
+        static string FullPath(string path) => Path.GetFullPath(path);
+
+        void AddCandidate(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+            var full = FullPath(path);
+            if (!candidates.Contains(full, comparer))
+                candidates.Add(full);
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+        {
+            if (Path.IsPathRooted(configuredPath))
+            {
+                AddCandidate(configuredPath);
+            }
+            else
+            {
+                AddCandidate(Path.Combine(hostEnvironment.ContentRootPath, configuredPath));
+                AddCandidate(Path.Combine(Directory.GetCurrentDirectory(), configuredPath));
+                AddCandidate(Path.Combine(AppContext.BaseDirectory, configuredPath));
+            }
+        }
+
+        AddCandidate(Path.Combine(hostEnvironment.ContentRootPath, "Movies.json"));
+        AddCandidate(Path.Combine(Directory.GetCurrentDirectory(), "Movies.json"));
+        AddCandidate(Path.Combine(AppContext.BaseDirectory, "Movies.json"));
+
+        AddCandidate(Path.Combine(hostEnvironment.ContentRootPath, "Backend", "Movies.json"));
+        AddCandidate(Path.Combine(Directory.GetCurrentDirectory(), "Backend", "Movies.json"));
+
+        return candidates.FirstOrDefault(File.Exists);
     }
 }
