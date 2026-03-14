@@ -42,7 +42,10 @@ export const useGenerateStore = defineStore('generate', {
     // Load from localStorage; fetch fresh if missing or from a previous day.
     // When a valid cache exists, re-fetch the same movie IDs so ratings/details stay current.
     async loadPicks() {
-      if (!import.meta.client) return
+      if (!import.meta.client) {
+        await this.fetchFresh()
+        return
+      }
 
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
@@ -58,6 +61,10 @@ export const useGenerateStore = defineStore('generate', {
       }
 
       await this.fetchFresh()
+    },
+
+    setPicks(movies: MovieSummaryDto[]) {
+      this.picks = movies
     },
 
     // Re-fetch fresh MovieSummaryDto data for the given IDs and update the cache
