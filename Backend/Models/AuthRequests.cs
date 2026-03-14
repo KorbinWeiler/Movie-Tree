@@ -7,7 +7,7 @@ public record RegisterRequest(
 );
 
 public record LoginRequest(
-    [Required] string Username,
+    [Required, EmailAddress] string Email,
     [Required] string Password
 );
 

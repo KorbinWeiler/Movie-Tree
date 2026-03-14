@@ -29,6 +29,20 @@
 
       <v-form @submit.prevent="submit">
         <v-text-field
+          v-if="mode === 'login'"
+          v-model="loginEmail"
+          label="Email"
+          type="email"
+          variant="outlined"
+          density="compact"
+          rounded="lg"
+          class="mb-3"
+          autocomplete="email"
+          :disabled="loading"
+        />
+
+        <v-text-field
+          v-else
           v-model="username"
           label="Username"
           variant="outlined"
@@ -101,6 +115,7 @@ const tabs = [
 ] as const
 
 const username = ref('')
+const loginEmail = ref('')
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -111,7 +126,7 @@ const submit = async () => {
   loading.value = true
   try {
     if (mode.value === 'login') {
-      await authStore.login(username.value, password.value)
+      await authStore.login(loginEmail.value, password.value)
     } else {
       await authStore.register(username.value, email.value, password.value)
     }

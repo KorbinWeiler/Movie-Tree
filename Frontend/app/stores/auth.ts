@@ -13,6 +13,23 @@ interface MeResponse {
   profilePictureUrl: string | null
 }
 
+function normalizeAuthResponse(raw: any): AuthResponse {
+  return {
+    token: raw?.token ?? raw?.Token ?? '',
+    expiresAt: raw?.expiresAt ?? raw?.ExpiresAt ?? '',
+  }
+}
+
+function normalizeMeResponse(raw: any): MeResponse {
+  return {
+    id: raw?.id ?? raw?.Id ?? '',
+    userName: raw?.userName ?? raw?.UserName ?? '',
+    email: raw?.email ?? raw?.Email ?? '',
+    role: raw?.role ?? raw?.Role ?? '',
+    profilePictureUrl: raw?.profilePictureUrl ?? raw?.ProfilePictureUrl ?? null,
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: null as string | null,
@@ -34,22 +51,24 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async login(username: string, password: string) {
+    async login(email: string, password: string) {
       const config = useRuntimeConfig()
-      const res = await $fetch<AuthResponse>(`${config.public.apiBase}/auth/login`, {
+      const raw = await $fetch<any>(`${config.public.apiBase}/auth/login`, {
         method: 'POST',
-        body: { username, password },
+        body: { email, password },
       })
+      const res = normalizeAuthResponse(raw)
       this._setToken(res)
       await this.fetchMe()
     },
 
     async register(username: string, email: string, password: string) {
       const config = useRuntimeConfig()
-      const res = await $fetch<AuthResponse>(`${config.public.apiBase}/auth/register`, {
+      const raw = await $fetch<any>(`${config.public.apiBase}/auth/register`, {
         method: 'POST',
         body: { username, email, password },
       })
+      const res = normalizeAuthResponse(raw)
       this._setToken(res)
       await this.fetchMe()
     },
@@ -58,11 +77,19 @@ export const useAuthStore = defineStore('auth', {
       if (!this.token) return
       try {
         const config = useRuntimeConfig()
-        this.user = await $fetch<MeResponse>(`${config.public.apiBase}/auth/me`, {
+        const raw = await $fetch<any>(`${config.public.apiBase}/auth/me`, {
           headers: { Authorization: `Bearer ${this.token}` },
         })
-      } catch {
-        this.logout()
+        this.user = normalizeMeResponse(raw)
+      } catch (e: any) {
+        const status = e?.statusCode ?? e?.response?.status
+        if (status === 401) {
+          this.logout()
+          return
+        }
+
+        // Keep token on transient/non-auth failures so navigation is not blocked.
+        this.user = null
       }
     },
 
@@ -77,6 +104,10 @@ export const useAuthStore = defineStore('auth', {
     },
 
     _setToken(res: AuthResponse) {
+      if (!res.token || !res.expiresAt) {
+        throw new Error('Invalid auth response payload.')
+      }
+
       this.token = res.token
       this.expiresAt = res.expiresAt
       if (import.meta.client) {

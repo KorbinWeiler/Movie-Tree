@@ -32,9 +32,9 @@ public class AuthController(UserManager<ApplicationUser> userManager, TokenServi
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var user = await userManager.FindByNameAsync(request.Username);
+        var user = await userManager.FindByEmailAsync(request.Email);
         if (user == null || !await userManager.CheckPasswordAsync(user, request.Password))
-            return Unauthorized(new { message = "Invalid username or password." });
+            return Unauthorized(new { message = "Invalid email or password." });
 
         return Ok(tokenService.GenerateToken(user));
     }
