@@ -1,7 +1,7 @@
 <template>
-  <div class="movie-card" @click="movieModal.open(movie.id)">
+  <div class="movie-card" style="min-height: 280px;" @click="movieModal.open(movie.id)">
     <!-- Poster -->
-    <div class="movie-poster">
+    <div class="movie-poster" style="min-height: 220px;">
       <v-img
         v-if="movie.posterUrl"
         :src="movie.posterUrl"
