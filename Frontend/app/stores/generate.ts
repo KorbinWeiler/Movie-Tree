@@ -9,6 +9,15 @@ interface StoredPicks {
 }
 
 function normalizeMovie(raw: any): MovieSummaryDto {
+  try {
+    const badTitle = raw?.title != null && typeof raw.title !== 'string' && typeof raw.title !== 'number'
+    const badRating = raw?.averageRating != null && typeof raw.averageRating !== 'number'
+    if (badTitle || badRating) {
+      console.warn('[generate.normalizeMovie] Unexpected movie payload types', { badTitle, badRating, raw })
+    }
+  } catch (e) {
+    console.warn('[generate.normalizeMovie] failed to inspect payload', e)
+  }
   return {
     id: raw?.id ?? raw?.Id ?? 0,
     title: raw?.title ?? raw?.Title ?? '',

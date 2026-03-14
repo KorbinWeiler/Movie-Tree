@@ -21,7 +21,20 @@ export interface MovieDetailDto extends MovieSummaryDto {
   isVisible: boolean
 }
 
+function logBadMoviePayload(raw: any, source = 'movie.ts') {
+  try {
+    const badTitle = raw?.title != null && typeof raw.title !== 'string' && typeof raw.title !== 'number'
+    const badRating = raw?.averageRating != null && typeof raw.averageRating !== 'number'
+    if (badTitle || badRating) {
+      console.warn(`[${source}] Unexpected movie payload types`, { badTitle, badRating, raw })
+    }
+  } catch (e) {
+    console.warn('[movie.ts] Failed to inspect movie payload', e)
+  }
+}
+
 function normalizeMovie(raw: any): MovieSummaryDto {
+  logBadMoviePayload(raw, 'movie.normalizeMovie')
   return {
     id: raw?.id ?? raw?.Id ?? 0,
     title: raw?.title ?? raw?.Title ?? '',

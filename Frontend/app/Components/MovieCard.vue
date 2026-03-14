@@ -13,16 +13,16 @@
         <v-icon size="40" color="surface-variant">mdi-movie-open</v-icon>
       </div>
 
-      <!-- Rating badge -->
-      <div v-if="movie?.averageRating" class="rating-badge">
-        <span>{{ movie.averageRating }}</span>
+      <!-- Rating badge (guard against non-number values) -->
+      <div v-if="isNumber(movie?.averageRating)" class="rating-badge">
+        <span>{{ movie!.averageRating }}</span>
       </div>
     </div>
 
     <!-- Info -->
     <div class="movie-info pa-2">
       <div class="movie-title text-body-2 font-weight-medium">
-        {{ movie?.title ?? '' }}
+        {{ displayTitle }}
       </div>
       <div class="movie-year text-caption" style="color: rgb(var(--v-theme-secondary), 0.7)">
         {{ releaseYear }}
@@ -48,6 +48,16 @@ function openMovie() {
   if (!props.movie) return
   movieModal.open(props.movie.id)
 }
+
+// Safe helpers to avoid rendering objects as text (e.g. "[Object Object]")
+const isNumber = (v: any): v is number => typeof v === 'number' && !isNaN(v)
+
+const displayTitle = computed(() => {
+  const t = props.movie?.title
+  if (typeof t === 'string') return t
+  if (typeof t === 'number') return String(t)
+  return ''
+})
 
 const releaseYear = computed(() =>
   props.movie?.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''
