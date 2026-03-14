@@ -90,7 +90,10 @@ builder.Services.AddCors(options =>
     });
     options.AddPolicy("AllowStaticWebsite", policy => {
     // TODO: Update this to the actual production frontend URL before launch
-        policy.WithOrigins("https://white-desert-08300781e.6.azurestaticapps.net")
+        policy.WithOrigins(
+                "https://white-desert-08300781e.6.azurestaticapps.net",
+                "http://localhost:3000",
+                "https://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });

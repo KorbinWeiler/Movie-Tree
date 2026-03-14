@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   css: ['~/assets/main.css'],
   runtimeConfig: {
     public: {
-      apiBase: 'https://localhost:7133/api',
+        apiBase: (globalThis as any).process?.env?.NUXT_PUBLIC_API_BASE ?? 'https://localhost:7133/api',
     },
   },
   build: {
