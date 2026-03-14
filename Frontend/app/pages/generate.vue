@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { MovieCard } from '#components'
+import { MovieCard } from '@/components'
 
 definePageMeta({ middleware: 'auth' })
 
