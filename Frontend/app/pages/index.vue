@@ -109,8 +109,8 @@ const watchLaterMovies = computed(() => userStore.watchLater.map(w => w.movie))
 }
 
 .movie-row-item {
-  flex-shrink: 0;
-  width: calc(100% / 11);
+  flex: 0 0 clamp(130px, 12vw, 190px);
+  min-width: 130px;
   scroll-snap-align: start;
 }
 

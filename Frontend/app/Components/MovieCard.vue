@@ -55,7 +55,9 @@ const releaseYear = computed(() =>
   transition: transform 200ms ease, box-shadow 200ms ease;
   border-radius: 12px;
   overflow: hidden;
+  width: 100%;
   background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .movie-card:hover {
@@ -105,6 +107,7 @@ const releaseYear = computed(() =>
   color: rgb(var(--v-theme-on-surface));
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;

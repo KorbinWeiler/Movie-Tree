@@ -64,7 +64,7 @@
     </v-row>
 
     <v-row v-else-if="generateStore.isGenerating" dense>
-      <v-col v-for="n in 10" :key="n" cols="6" sm="4" md="3" lg="2">
+      <v-col v-for="n in 9" :key="n" cols="6" sm="4" md="3" lg="2">
         <v-skeleton-loader type="card" rounded="lg" />
       </v-col>
     </v-row>
