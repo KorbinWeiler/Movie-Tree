@@ -21,6 +21,26 @@ export interface MovieDetailDto extends MovieSummaryDto {
   isVisible: boolean
 }
 
+function normalizeMovie(raw: any): MovieSummaryDto {
+  return {
+    id: raw?.id ?? raw?.Id ?? 0,
+    title: raw?.title ?? raw?.Title ?? '',
+    posterUrl: raw?.posterUrl ?? raw?.PosterUrl ?? null,
+    releaseDate: raw?.releaseDate ?? raw?.ReleaseDate ?? null,
+    averageRating: raw?.averageRating ?? raw?.AverageRating ?? null,
+    reviewCount: raw?.reviewCount ?? raw?.ReviewCount ?? 0,
+    genres: (raw?.genres ?? raw?.Genres ?? []).map((g: any) => ({
+      id: g?.id ?? g?.Id ?? 0,
+      name: g?.name ?? g?.Name ?? '',
+    })),
+  }
+}
+
+function normalizeMovies(raw: any): MovieSummaryDto[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(normalizeMovie).filter(m => m.id > 0 && m.title.length > 0)
+}
+
 export const useMovieStore = defineStore('movie', {
   state: () => ({
     trending: [] as MovieSummaryDto[],
@@ -35,7 +55,8 @@ export const useMovieStore = defineStore('movie', {
     async fetchTrending() {
       const { apiFetch } = useApi()
       try {
-        this.trending = await apiFetch<MovieSummaryDto[]>('/movie/temp-trending')
+        const raw = await apiFetch<any[]>('/movie/temp-trending')
+        this.trending = normalizeMovies(raw)
       } catch { /* API unavailable — keep empty array */ }
     },
 
@@ -45,7 +66,8 @@ export const useMovieStore = defineStore('movie', {
       if (q) params.set('q', q)
       if (genreId) params.set('genreId', String(genreId))
       try {
-        this.searchResults = await apiFetch<MovieSummaryDto[]>(`/movie?${params}`)
+        const raw = await apiFetch<any[]>(`/movie?${params}`)
+        this.searchResults = normalizeMovies(raw)
       } catch { this.searchResults = [] }
     },
 

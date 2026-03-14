@@ -139,30 +139,6 @@ public class MovieController(AppDbContext db) : ControllerBase
             .Where(m => idList.Contains(m.Id) && m.IsVisible)
             .ToListAsync();
 
-        // For any movie missing a poster, fetch from TMDB in parallel and persist
-        var missingPoster = movies.Where(m => m.PosterUrl is null).ToList();
-        if (missingPoster.Count > 0)
-        {
-            try
-            {
-                var tmdb = new TMDBService(db);
-                await Task.WhenAll(missingPoster.Select(m => tmdb.GetMovieByIdAsync(m.Id)));
-                // Reload the enriched rows so the response has the updated poster URLs
-                var enrichedIds = missingPoster.Select(m => m.Id).ToList();
-                var enriched = await db.Movies
-                    .Include(m => m.Reviews)
-                    .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
-                    .Where(m => enrichedIds.Contains(m.Id))
-                    .ToListAsync();
-                foreach (var e in enriched)
-                {
-                    var idx = movies.FindIndex(m => m.Id == e.Id);
-                    if (idx >= 0) movies[idx] = e;
-                }
-            }
-            catch { /* TMDB unavailable — return what we have */ }
-        }
-
         // Return in the same order as the requested ids
         var ordered = idList
             .Select(id => movies.FirstOrDefault(m => m.Id == id))
