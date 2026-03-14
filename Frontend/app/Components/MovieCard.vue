@@ -56,6 +56,8 @@ const releaseYear = computed(() =>
   border-radius: 12px;
   overflow: hidden;
   width: 100%;
+  display: flex;
+  flex-direction: column;
   background-color: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
@@ -67,6 +69,7 @@ const releaseYear = computed(() =>
 
 .movie-poster {
   position: relative;
+  height: clamp(180px, 24vw, 300px);
   aspect-ratio: 2 / 3;
   background-color: rgb(var(--v-theme-surface));
   border-radius: 12px 12px 0 0;
@@ -76,6 +79,13 @@ const releaseYear = computed(() =>
 .poster-img {
   width: 100%;
   height: 100%;
+}
+
+/* Fallback for environments where aspect-ratio handling is inconsistent */
+@supports not (aspect-ratio: 2 / 3) {
+  .movie-poster {
+    height: 240px;
+  }
 }
 
 .poster-placeholder {
