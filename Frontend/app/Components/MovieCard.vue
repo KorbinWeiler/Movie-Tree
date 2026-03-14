@@ -1,11 +1,11 @@
 <template>
-  <div class="movie-card" style="min-height: 280px;" @click="movieModal.open(movie.id)">
+  <div class="movie-card" style="min-height: 280px;" @click="openMovie()">
     <!-- Poster -->
     <div class="movie-poster" style="min-height: 220px;">
       <v-img
-        v-if="movie.posterUrl"
+        v-if="movie?.posterUrl"
         :src="movie.posterUrl"
-        :alt="movie.title"
+        :alt="movie?.title ?? 'Movie'"
         cover
         class="poster-img"
       />
@@ -14,7 +14,7 @@
       </div>
 
       <!-- Rating badge -->
-      <div v-if="movie.averageRating" class="rating-badge">
+      <div v-if="movie?.averageRating" class="rating-badge">
         <span>{{ movie.averageRating }}</span>
       </div>
     </div>
@@ -22,7 +22,7 @@
     <!-- Info -->
     <div class="movie-info pa-2">
       <div class="movie-title text-body-2 font-weight-medium">
-        {{ movie.title }}
+        {{ movie?.title ?? '' }}
       </div>
       <div class="movie-year text-caption" style="color: rgb(var(--v-theme-secondary), 0.7)">
         {{ releaseYear }}
@@ -39,13 +39,18 @@ const props = defineProps<{
     releaseDate?: string | null
     posterUrl?: string | null
     averageRating?: number | null
-  }
+  } | null
 }>()
 
 const movieModal = useMovieModal()
 
+function openMovie() {
+  if (!props.movie) return
+  movieModal.open(props.movie.id)
+}
+
 const releaseYear = computed(() =>
-  props.movie.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''
+  props.movie?.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''
 )
 </script>
 
