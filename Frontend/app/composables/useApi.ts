@@ -4,6 +4,8 @@ export function useApi() {
 
   async function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     const headers: Record<string, string> = {}
+    const base = String(config.public.apiBase || '').replace(/\/$/, '')
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
     // Read token lazily so this works both inside and outside Vue setup context
     let token: string | null = null
@@ -20,7 +22,7 @@ export function useApi() {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    return $fetch<T>(`${config.public.apiBase}${path}`, {
+    return $fetch<T>(`${base}${normalizedPath}`, {
       ...options,
       headers: { ...headers, ...(options.headers as Record<string, string> ?? {}) },
     })

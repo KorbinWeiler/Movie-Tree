@@ -23,8 +23,10 @@ export interface MovieDetailDto extends MovieSummaryDto {
 
 function logBadMoviePayload(raw: any, source = 'movie.ts') {
   try {
-    const badTitle = raw?.title != null && typeof raw.title !== 'string' && typeof raw.title !== 'number'
-    const badRating = raw?.averageRating != null && typeof raw.averageRating !== 'number'
+    const titleValue = raw?.title ?? raw?.Title
+    const ratingValue = raw?.averageRating ?? raw?.AverageRating
+    const badTitle = titleValue != null && typeof titleValue !== 'string' && typeof titleValue !== 'number'
+    const badRating = ratingValue != null && typeof ratingValue !== 'number' && typeof ratingValue !== 'string'
     if (badTitle || badRating) {
       console.warn(`[${source}] Unexpected movie payload types`, { badTitle, badRating, raw })
     }
@@ -33,15 +35,39 @@ function logBadMoviePayload(raw: any, source = 'movie.ts') {
   }
 }
 
+function toSafeTitle(raw: any): string {
+  const value = raw?.title ?? raw?.Title
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number') return String(value)
+  if (value && typeof value === 'object') {
+    // Handle occasional translated-title objects from external sources.
+    const nested = value.title ?? value.name ?? value.text ?? value.originalTitle ?? value.english
+    if (typeof nested === 'string') return nested.trim()
+  }
+  return ''
+}
+
+function toSafeNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 function normalizeMovie(raw: any): MovieSummaryDto {
   logBadMoviePayload(raw, 'movie.normalizeMovie')
+  const title = toSafeTitle(raw)
+  const averageRating = toSafeNumber(raw?.averageRating ?? raw?.AverageRating)
+  const reviewCount = toSafeNumber(raw?.reviewCount ?? raw?.ReviewCount) ?? 0
   return {
     id: raw?.id ?? raw?.Id ?? 0,
-    title: raw?.title ?? raw?.Title ?? '',
+    title,
     posterUrl: raw?.posterUrl ?? raw?.PosterUrl ?? null,
     releaseDate: raw?.releaseDate ?? raw?.ReleaseDate ?? null,
-    averageRating: raw?.averageRating ?? raw?.AverageRating ?? null,
-    reviewCount: raw?.reviewCount ?? raw?.ReviewCount ?? 0,
+    averageRating,
+    reviewCount,
     genres: (raw?.genres ?? raw?.Genres ?? []).map((g: any) => ({
       id: g?.id ?? g?.Id ?? 0,
       name: g?.name ?? g?.Name ?? '',
@@ -51,7 +77,9 @@ function normalizeMovie(raw: any): MovieSummaryDto {
 
 function normalizeMovies(raw: any): MovieSummaryDto[] {
   if (!Array.isArray(raw)) return []
-  return raw.map(normalizeMovie).filter(m => m.id > 0 && m.title.length > 0)
+  return raw
+    .map(normalizeMovie)
+    .filter(m => m.id > 0 && m.title.trim().length > 0)
 }
 
 export const useMovieStore = defineStore('movie', {
