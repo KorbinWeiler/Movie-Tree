@@ -7,7 +7,12 @@
         <span class="section-label">TRENDING NOW</span>
         <v-btn variant="text" color="primary" size="small" class="see-all-btn">See All</v-btn>
       </div>
-      <div class="movie-row">
+      <div v-if="isTrendingLoading" class="movie-row">
+        <div v-for="n in 6" :key="`trending-skeleton-${n}`" class="movie-row-item">
+          <v-skeleton-loader class="movie-skeleton" type="image, article" />
+        </div>
+      </div>
+      <div v-else class="movie-row">
         <MovieCard
           v-for="movie in trendingMovies"
           :key="movie.id"
@@ -23,7 +28,12 @@
         <span class="section-label">AI PICKS</span>
         <v-btn variant="text" color="primary" size="small" class="see-all-btn">See All</v-btn>
       </div>
-      <div class="movie-row ai-picks-row">
+      <div v-if="isAiPicksLoading" class="movie-row ai-picks-row">
+        <div v-for="n in 6" :key="`ai-skeleton-${n}`" class="movie-row-item">
+          <v-skeleton-loader class="movie-skeleton" type="image, article" />
+        </div>
+      </div>
+      <div v-else class="movie-row ai-picks-row">
         <MovieCard
           v-for="movie in aiPickMovies"
           :key="movie.id"
@@ -58,13 +68,33 @@ const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
 const userStore = useUserStore()
 const authStore = useAuthStore()
+const isTrendingLoading = ref(true)
+const isAiPicksLoading = ref(true)
 
-try {
-  await Promise.all([
-    movieStore.fetchTrending(),
-    generateStore.loadPicks(),
+const loadHomeSections = async () => {
+  await Promise.allSettled([
+    (async () => {
+      try {
+        await movieStore.fetchTrending()
+      } finally {
+        isTrendingLoading.value = false
+      }
+    })(),
+    (async () => {
+      try {
+        await generateStore.loadPicks()
+      } finally {
+        isAiPicksLoading.value = false
+      }
+    })(),
   ])
-} catch { /* server offline — pages shows empty sections */ }
+}
+
+if (import.meta.client) {
+  void loadHomeSections()
+} else {
+  await loadHomeSections()
+}
 
 if (authStore.isLoggedIn) {
   try { await userStore.fetchWatchLater() } catch { /* ignore */ }
@@ -110,11 +140,18 @@ const watchLaterMovies = computed(() => userStore.watchLater.map(w => w.movie))
 }
 
 .movie-row-item {
+  aspect-ratio: 2/3;
   flex: 0 0 clamp(130px, 12vw, 190px) !important;
   width: clamp(130px, 12vw, 190px) !important;
   min-width: 130px !important;
   max-width: 190px !important;
   scroll-snap-align: start;
+}
+
+.movie-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
 }
 
 .ai-picks-row {
