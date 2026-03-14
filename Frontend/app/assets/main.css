@@ -34,3 +34,21 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+/* Deployment safety: keep movie cards visible even if scoped CSS load/order changes */
+.movie-card {
+  min-height: 280px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.movie-card .movie-poster {
+  min-height: 220px !important;
+  height: 220px !important;
+}
+
+.movie-card .v-img,
+.movie-card .v-responsive {
+  min-height: 220px !important;
+  height: 100% !important;
+}
