@@ -53,7 +53,6 @@
 </template>
 
 <script setup lang="ts">
-import { MovieCard } from '#components'
 
 const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
