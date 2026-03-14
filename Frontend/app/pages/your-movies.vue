@@ -42,6 +42,8 @@
 
 definePageMeta({ middleware: 'auth' })
 
+import { MovieCard } from '#components'
+
 const userStore = useUserStore()
 const activeTab = ref<'watched' | 'watchlater'>('watched')
 
