@@ -42,7 +42,7 @@
 
 definePageMeta({ middleware: 'auth' })
 
-import MovieCard from '@/components/MovieCard.vue'
+import MovieCard from '~/components/MovieCard.vue'
 
 const userStore = useUserStore()
 const activeTab = ref<'watched' | 'watchlater'>('watched')
