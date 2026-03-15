@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   // Ensure Nuxt auto-registers components from the `app/components` directory
   components: [
     {
-      path: '~/components',
+      path: '~/app/components',
       pathPrefix: false,
       extensions: ['.vue'],
     },

@@ -64,7 +64,6 @@
 
 <script setup lang="ts">
 import { defineComponent, getCurrentInstance, h, onMounted, resolveComponent } from 'vue'
-import MovieCardFallback from '~/components/MovieCard.vue'
 
 const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
@@ -92,7 +91,27 @@ const MaybeMovieCard = defineComponent({
       )
 
       if (registered) return h(resolveComponent('MovieCard') as any, { ...attrs, movie: props.movie })
-      return h(MovieCardFallback as any, { ...attrs, movie: props.movie })
+      return h('div', {
+        ...attrs,
+        class: ['movie-card', attrs.class],
+        style: 'width:100%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:rgb(var(--v-theme-surface));border:1px solid rgba(var(--v-theme-on-surface),0.08);cursor:pointer;',
+        onClick: openMovie,
+      }, [
+        props.movie?.posterUrl
+          ? h('img', {
+            src: props.movie.posterUrl,
+            alt: props.movie?.title ?? 'Movie',
+            style: 'width:100%;height:220px;object-fit:cover;',
+          })
+          : h('div', {
+            style: 'width:100%;height:220px;display:flex;align-items:center;justify-content:center;background:rgb(var(--v-theme-surface));',
+          }, 'No image'),
+        h('div', { style: 'padding:8px;' }, [
+          h('div', { style: 'font-weight:600;line-height:1.3;' }, String(props.movie?.title ?? '')),
+          h('div', { style: 'font-size:12px;color:rgba(var(--v-theme-on-surface),0.6);margin-top:4px;' },
+            props.movie?.releaseDate ? String(new Date(props.movie.releaseDate).getFullYear()) : ''),
+        ]),
+      ])
     }
   },
 })
