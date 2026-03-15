@@ -75,8 +75,10 @@ export const useGenerateStore = defineStore('generate', {
   }),
 
   actions: {
-    // Load from localStorage; fetch fresh if missing or from a previous day.
-    // When a valid cache exists, re-fetch the same movie IDs so ratings/details stay current.
+    // Load from localStorage when it is still valid for today; otherwise fetch
+    // fresh recommendations. Do not depend on a follow-up batch refresh for the
+    // initial render, since the home page should render directly from the first
+    // successful response.
     async loadPicks() {
       if (!import.meta.client) {
         await this.fetchFresh()
@@ -88,9 +90,8 @@ export const useGenerateStore = defineStore('generate', {
         try {
           const stored: StoredPicks = JSON.parse(raw)
           if (stored.date === todayString() && stored.movies.length > 0) {
-            // Show cached data immediately, then refresh in the background
+            // Use the cached picks directly for the initial render.
             this.picks = stored.movies
-            this.refreshCachedPicks(stored.movies.map(m => m.id))
             return
           }
         } catch { /* corrupted — fall through to fetch */ }
@@ -101,20 +102,6 @@ export const useGenerateStore = defineStore('generate', {
 
     setPicks(movies: MovieSummaryDto[]) {
       this.picks = movies
-    },
-
-    // Re-fetch fresh MovieSummaryDto data for the given IDs and update the cache
-    async refreshCachedPicks(ids: number[]) {
-      if (!ids.length) return
-      const { apiFetch } = useApi()
-      try {
-        const raw = await apiFetch<any[]>(`/movie/batch?ids=${ids.join(',')}`)
-        const fresh = normalizeMovies(raw)
-        if (fresh.length > 0) {
-          this.picks = fresh
-          this.persistPicks()
-        }
-      } catch (e) { console.error('[generate] refreshCachedPicks failed:', e) }
     },
 
     // Persist the current in-memory picks to localStorage

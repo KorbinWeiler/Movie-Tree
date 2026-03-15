@@ -166,8 +166,12 @@ async function generateNow() {
   if (generationType.value === 'all' || generationType.value === 'ai') {
     generateStore.isGenerating = true
     try {
-      const raw = await apiFetch<any[]>('/generate')
-      generateStore.setPicks(normalizeMovies(raw))
+        const raw = await apiFetch<any[]>('/generate')
+        console.debug('[generate.vue] /generate raw response:', raw)
+        const normalized = normalizeMovies(raw)
+        console.debug('[generate.vue] /generate normalized:', normalized)
+        generateStore.setPicks(normalized)
+        console.debug('[generate.vue] generateStore.picks after set:', generateStore.picks)
     } finally {
       generateStore.isGenerating = false
     }
