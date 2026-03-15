@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import MovieCard from '../components/MovieCard.vue'
+import MovieCard from '~/components/MovieCard.vue'
 
 definePageMeta({ middleware: 'auth' })
 
