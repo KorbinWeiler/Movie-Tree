@@ -63,8 +63,6 @@
 </template>
 
 <script setup lang="ts">
-import MovieCard from '../components/MovieCard.vue'
-
 const movieStore = useMovieStore()
 const query = ref('')
 const activeGenreId = ref<number | null>(null)

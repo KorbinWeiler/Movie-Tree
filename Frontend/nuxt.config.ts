@@ -5,6 +5,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false,
+      extensions: ['.vue'],
+    },
+  ],
   css: ['~/assets/main.css'],
   runtimeConfig: {
     public: {
