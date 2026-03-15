@@ -5,9 +5,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@vueuse/nuxt'],
+  // Ensure Nuxt auto-registers components from the `app/components` directory
   components: [
     {
-      path: '~/components',
+      path: '~/app/components',
       pathPrefix: false,
       extensions: ['.vue'],
     },

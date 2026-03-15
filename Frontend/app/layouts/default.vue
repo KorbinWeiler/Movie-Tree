@@ -120,13 +120,42 @@
       <slot />
     </v-main>
 
-    <component :is="'MovieModal'" />
+    <MaybeMovieModal />
   </div>
 </template>
 
 <script setup lang="ts">
+import { defineComponent, getCurrentInstance, h, onMounted, resolveComponent, shallowRef } from 'vue'
+
 const route = useRoute()
 const authStore = useAuthStore()
+
+const MaybeMovieModal = defineComponent({
+  name: 'MaybeMovieModal',
+  setup() {
+    const importedComp = shallowRef<any>(null)
+    const inst = getCurrentInstance()
+
+    onMounted(async () => {
+      if (importedComp.value) return
+      try {
+        const mod = await import('../components/MovieModal.vue')
+        importedComp.value = mod.default
+      } catch {
+        // Keep empty render if modal component cannot be loaded.
+      }
+    })
+
+    return () => {
+      const registered = Boolean(
+        inst?.appContext?.components?.MovieModal || inst?.appContext?.components?.['movie-modal']
+      )
+      if (registered) return h(resolveComponent('MovieModal') as any)
+      if (importedComp.value) return h(importedComp.value)
+      return null
+    }
+  },
+})
 
 const navLinks = computed(() => [
   { label: 'Feed', to: '/feed' },
