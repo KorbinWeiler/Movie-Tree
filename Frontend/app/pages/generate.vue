@@ -82,7 +82,8 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h, getCurrentInstance, resolveComponent, shallowRef, onMounted } from 'vue'
+import { defineComponent, h, getCurrentInstance, resolveComponent } from 'vue'
+import MovieCardFallback from '../components/MovieCard.vue'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -147,19 +148,7 @@ const MaybeMovieCard = defineComponent({
     movie: { type: Object as () => MovieSummaryDto, required: true },
   },
   setup(props) {
-    const importedComp = shallowRef<any>(null)
     const inst = getCurrentInstance()
-
-    onMounted(async () => {
-      // When auto-registration is missing in static output, try importing directly.
-      if (importedComp.value) return
-      try {
-        const mod = await import('../components/MovieCard.vue')
-        importedComp.value = mod.default
-      } catch {
-        // Keep fallback card UI below.
-      }
-    })
 
     return () => {
       const registered = Boolean(
@@ -170,24 +159,7 @@ const MaybeMovieCard = defineComponent({
         return h(resolveComponent('MovieCard') as any, { movie: props.movie })
       }
 
-      if (importedComp.value) {
-        return h(importedComp.value, { movie: props.movie })
-      }
-
-      // Fallback simple card markup when MovieCard isn't registered
-      const children: any[] = []
-      if (props.movie.posterUrl) {
-        children.push(h('img', { src: props.movie.posterUrl, alt: props.movie.title, style: 'width:100%;height:160px;object-fit:cover;border-radius:8px 8px 0 0;' }))
-      } else {
-        children.push(h('div', { style: 'width:100%;height:160px;background:#eee;display:flex;align-items:center;justify-content:center;border-radius:8px 8px 0 0;' }, 'No image'))
-      }
-
-      children.push(h('div', { style: 'padding:8px' }, [
-        h('div', { style: 'font-weight:600' }, props.movie.title || ''),
-        h('div', { style: 'color:#666;font-size:12px;margin-top:4px' }, props.movie.releaseDate ? new Date(props.movie.releaseDate).getFullYear() : ''),
-      ]))
-
-      return h('div', { class: 'movie-card', style: 'width:100%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,0.06);' }, children)
+      return h(MovieCardFallback as any, { movie: props.movie })
     }
   }
 })
