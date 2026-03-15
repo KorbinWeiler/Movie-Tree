@@ -120,30 +120,15 @@
       <slot />
     </v-main>
 
-    <MaybeMovieModal />
+    <MovieModal />
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineComponent, getCurrentInstance, h, resolveComponent } from 'vue'
+import MovieModal from '../components/MovieModal.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
-
-const MaybeMovieModal = defineComponent({
-  name: 'MaybeMovieModal',
-  setup() {
-    const inst = getCurrentInstance()
-
-    return () => {
-      const registered = Boolean(
-        inst?.appContext?.components?.MovieModal || inst?.appContext?.components?.['movie-modal']
-      )
-      if (registered) return h(resolveComponent('MovieModal') as any)
-      return null
-    }
-  },
-})
 
 const navLinks = computed(() => [
   { label: 'Feed', to: '/feed' },

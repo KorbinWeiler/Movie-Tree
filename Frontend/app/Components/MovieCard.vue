@@ -43,8 +43,6 @@ const props = defineProps<{
   } | null
 }>()
 
-console.log('[MovieCard] rendering movie', props.movie)
-
 const movieModal = useMovieModal()
 
 function openMovie() {
