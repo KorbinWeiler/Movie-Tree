@@ -125,6 +125,8 @@
 </template>
 
 <script setup lang="ts">
+import MovieModal from '~/components/MovieModal.vue'
+
 const route = useRoute()
 const authStore = useAuthStore()
 

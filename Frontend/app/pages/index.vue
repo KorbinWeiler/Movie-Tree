@@ -63,6 +63,8 @@
 </template>
 
 <script setup lang="ts">
+import MovieCard from '~/components/MovieCard.vue'
+
 const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
 const userStore = useUserStore()
