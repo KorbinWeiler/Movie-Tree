@@ -126,7 +126,6 @@
 
 <script setup lang="ts">
 import { defineComponent, getCurrentInstance, h, resolveComponent } from 'vue'
-import MovieModalFallback from '~/components/MovieModal.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -141,7 +140,7 @@ const MaybeMovieModal = defineComponent({
         inst?.appContext?.components?.MovieModal || inst?.appContext?.components?.['movie-modal']
       )
       if (registered) return h(resolveComponent('MovieModal') as any)
-      return h(MovieModalFallback as any)
+      return null
     }
   },
 })
