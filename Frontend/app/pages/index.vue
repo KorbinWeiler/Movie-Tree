@@ -13,7 +13,8 @@
         </div>
       </div>
       <div v-else class="movie-row">
-        <MovieCard
+        <component
+          :is="'MovieCard'"
           v-for="movie in trendingMovies"
           :key="movie.id"
           :movie="movie"
@@ -34,7 +35,8 @@
         </div>
       </div>
       <div v-else class="movie-row ai-picks-row">
-        <MovieCard
+        <component
+          :is="'MovieCard'"
           v-for="movie in aiPickMovies"
           :key="movie.id"
           :movie="movie"
@@ -50,7 +52,8 @@
         <v-btn variant="text" color="primary" size="small" class="see-all-btn">See All</v-btn>
       </div>
       <div class="movie-row">
-        <MovieCard
+        <component
+          :is="'MovieCard'"
           v-for="movie in watchLaterMovies"
           :key="movie.id"
           :movie="movie"
@@ -63,8 +66,6 @@
 </template>
 
 <script setup lang="ts">
-import MovieCard from '~/components/MovieCard.vue'
-
 const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
 const userStore = useUserStore()

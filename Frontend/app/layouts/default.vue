@@ -120,13 +120,11 @@
       <slot />
     </v-main>
 
-    <MovieModal />
+    <component :is="'MovieModal'" />
   </div>
 </template>
 
 <script setup lang="ts">
-import MovieModal from '~/components/MovieModal.vue'
-
 const route = useRoute()
 const authStore = useAuthStore()
 

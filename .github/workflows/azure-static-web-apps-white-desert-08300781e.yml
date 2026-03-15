@@ -34,11 +34,25 @@ jobs:
       - name: Install Dependencies
         working-directory: ./Frontend
         run: npm ci
+      - name: Clean Nuxt Build State
+        working-directory: ./Frontend
+        run: |
+          rm -rf .nuxt .output
+          rm -rf node_modules/.cache/nuxt
       - name: Build Application
         working-directory: ./Frontend
         run: npm run generate
         env:
+          CI: true
+          NUXT_TELEMETRY_DISABLED: 1
           NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
+      - name: Validate Static Output
+        working-directory: ./Frontend
+        run: |
+          if grep -RInE '<moviecard|<moviemodal' .output/public; then
+            echo "Found unresolved Vue components in generated static HTML."
+            exit 1
+          fi
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1

@@ -31,7 +31,7 @@
         md="3"
         lg="2"
       >
-        <MovieCard :movie="movie" />
+        <component :is="'MovieCard'" :movie="movie" />
       </v-col>
     </v-row>
 
@@ -39,8 +39,6 @@
 </template>
 
 <script setup lang="ts">
-import MovieCard from '~/components/MovieCard.vue'
-
 definePageMeta({ middleware: 'auth' })
 
 const userStore = useUserStore()

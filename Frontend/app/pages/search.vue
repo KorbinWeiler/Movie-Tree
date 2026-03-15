@@ -44,7 +44,7 @@
         md="3"
         lg="2"
       >
-        <MovieCard :movie="movie" />
+        <component :is="'MovieCard'" :movie="movie" />
       </v-col>
     </v-row>
 
@@ -63,8 +63,6 @@
 </template>
 
 <script setup lang="ts">
-import MovieCard from '~/components/MovieCard.vue'
-
 const movieStore = useMovieStore()
 const query = ref('')
 const activeGenreId = ref<number | null>(null)
