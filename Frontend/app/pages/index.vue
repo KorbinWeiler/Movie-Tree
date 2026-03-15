@@ -67,37 +67,38 @@ const movieStore = useMovieStore()
 const generateStore = useGenerateStore()
 const userStore = useUserStore()
 const authStore = useAuthStore()
-const isTrendingLoading = ref(true)
-const isAiPicksLoading = ref(true)
+
+// Start at false so SSR-rendered HTML (which also ends at false after await)
+// matches client initial state — eliminates hydration mismatch that was
+// replacing server-rendered MovieCards with skeletons before data reloaded.
+const isTrendingLoading = ref(false)
+const isAiPicksLoading = ref(false)
 
 const loadHomeSections = async () => {
+  isTrendingLoading.value = true
+  isAiPicksLoading.value = true
   await Promise.allSettled([
-    (async () => {
-      try {
-        await movieStore.fetchTrending()
-      } finally {
-        isTrendingLoading.value = false
-      }
-    })(),
-    (async () => {
-      try {
-        await generateStore.loadPicks()
-      } finally {
-        isAiPicksLoading.value = false
-      }
-    })(),
+    movieStore.fetchTrending().finally(() => { isTrendingLoading.value = false }),
+    generateStore.loadPicks().finally(() => { isAiPicksLoading.value = false }),
   ])
 }
 
-if (import.meta.client) {
-  void loadHomeSections()
-} else {
+// SSR: fetch data so the server can render populated cards.
+// isTrendingLoading ends as false by the time setup resolves.
+if (!import.meta.client) {
   await loadHomeSections()
+  if (authStore.isLoggedIn) {
+    try { await userStore.fetchWatchLater() } catch { /* ignore */ }
+  }
 }
 
-if (authStore.isLoggedIn) {
-  try { await userStore.fetchWatchLater() } catch { /* ignore */ }
-}
+// Client: load after mount to guarantee no SSR hydration conflict.
+onMounted(() => {
+  void loadHomeSections()
+  if (authStore.isLoggedIn) {
+    userStore.fetchWatchLater().catch(() => {})
+  }
+})
 
 const trendingMovies = computed(() => movieStore.trending)
 const aiPickMovies = computed(() => generateStore.picks)
