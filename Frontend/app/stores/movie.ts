@@ -98,7 +98,7 @@ export const useMovieStore = defineStore('movie', {
       try {
         const raw = await apiFetch<any[]>('/movie/temp-trending')
         this.trending = normalizeMovies(raw)
-      } catch { /* API unavailable — keep empty array */ }
+      } catch (e) { console.error('[movie] fetchTrending failed:', e) }
     },
 
     async search(q: string, genreId?: number) {
@@ -109,14 +109,14 @@ export const useMovieStore = defineStore('movie', {
       try {
         const raw = await apiFetch<any[]>(`/movie?${params}`)
         this.searchResults = normalizeMovies(raw)
-      } catch { this.searchResults = [] }
+      } catch (e) { console.error('[movie] search failed:', e); this.searchResults = [] }
     },
 
     async fetchGenres() {
       const { apiFetch } = useApi()
       try {
         this.genres = await apiFetch<GenreDto[]>('/movie/genres')
-      } catch { /* keep empty */ }
+      } catch (e) { console.error('[movie] fetchGenres failed:', e) }
     },
 
     async fetchById(id: number) {

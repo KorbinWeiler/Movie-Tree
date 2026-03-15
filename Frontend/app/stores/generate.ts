@@ -114,7 +114,7 @@ export const useGenerateStore = defineStore('generate', {
           this.picks = fresh
           this.persistPicks()
         }
-      } catch { /* keep showing cached data */ }
+      } catch (e) { console.error('[generate] refreshCachedPicks failed:', e) }
     },
 
     // Persist the current in-memory picks to localStorage
@@ -135,6 +135,8 @@ export const useGenerateStore = defineStore('generate', {
           const stored: StoredPicks = { date: todayString(), movies: this.picks }
           localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
         }
+      } catch (e) {
+        console.error('[generate] fetchFresh failed:', e)
       } finally {
         this.isGenerating = false
       }

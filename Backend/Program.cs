@@ -94,11 +94,15 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
     options.AddPolicy("AllowStaticWebsite", policy => {
-    // TODO: Update this to the actual production frontend URL before launch
-        policy.WithOrigins(
-                "https://white-desert-08300781e.6.azurestaticapps.net",
-                "http://localhost:3000",
-                "https://localhost:3000")
+        policy.SetIsOriginAllowed(origin =>
+              {
+                  var host = new Uri(origin).Host;
+                  // Allow any localhost port for development
+                  if (host == "localhost" || host == "127.0.0.1") return true;
+                  // Allow Azure Static Web Apps (both URL formats)
+                  if (origin.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
+                  return false;
+              })
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
