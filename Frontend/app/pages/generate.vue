@@ -83,7 +83,7 @@
 
 <script setup lang="ts">
 import { defineComponent, h, getCurrentInstance, resolveComponent } from 'vue'
-import MovieCardFallback from '../components/MovieCard.vue'
+import MovieCardFallback from '~/components/MovieCard.vue'
 
 definePageMeta({ middleware: 'auth' })
 

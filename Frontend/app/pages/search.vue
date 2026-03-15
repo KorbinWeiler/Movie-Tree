@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { defineComponent, getCurrentInstance, h, resolveComponent } from 'vue'
-import MovieCardFallback from '../components/MovieCard.vue'
+import MovieCardFallback from '~/components/MovieCard.vue'
 
 const movieStore = useMovieStore()
 const query = ref('')

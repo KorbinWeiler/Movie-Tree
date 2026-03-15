@@ -126,7 +126,7 @@
 
 <script setup lang="ts">
 import { defineComponent, getCurrentInstance, h, resolveComponent } from 'vue'
-import MovieModalFallback from '../components/MovieModal.vue'
+import MovieModalFallback from '~/components/MovieModal.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
