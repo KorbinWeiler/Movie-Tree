@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,9 @@ public class GenerateController(
     EmbeddedService embeddedService,
     SearchService searchService) : ControllerBase
 {
+    private const int DefaultRecommendationCount = 10;
+    private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
     private static MovieSummaryDto ToSummary(Movie m) => new(
         m.Id, m.Title, m.PosterUrl, m.ReleaseDate,
         m.Reviews.Count > 0 ? Math.Round(m.Reviews.Average(r => (double)r.Rating), 1) : null,
@@ -17,20 +21,113 @@ public class GenerateController(
         m.MovieGenres.Select(mg => new GenreDto(mg.Genre.Id, mg.Genre.Name))
     );
 
-    // POST /api/generate/recommend
-    // Body: { "movieIds": [1,2,3], "count": 10 }
-    // Flow: fetch descriptions → generalize via Gemini → vectorize via Azure Vision → vector search
+    private static RecommendResultDto ToRecommendResult(MovieSearchDocument document) => new(
+        document.Id,
+        document.Title,
+        document.PosterUrl,
+        document.Description,
+        document.Genres
+    );
+
+    private static RecommendResultDto ToRecommendResult(Movie movie) => new(
+        movie.Id.ToString(),
+        movie.Title,
+        movie.PosterUrl,
+        movie.Description,
+        movie.MovieGenres.Select(mg => mg.Genre.Name).ToArray()
+    );
+
     [HttpPost("recommend")]
     [Authorize]
     public async Task<IActionResult> Recommend([FromBody] RecommendRequest req)
     {
-        if (req.MovieIds is null || req.MovieIds.Count == 0)
+        return await RecommendFromMovieIdsAsync(req.MovieIds, req.Count);
+    }
+
+    [HttpPost("recommend/all")]
+    [Authorize]
+    public async Task<IActionResult> RecommendFromAllReviewed([FromBody] RecommendCountRequest? req)
+    {
+        var reviewedMovieIds = await db.Reviews
+            .Where(r => r.UserId == CurrentUserId && r.Movie.IsVisible)
+            .Select(r => r.MovieId)
+            .Distinct()
+            .ToListAsync();
+
+        if (reviewedMovieIds.Count == 0)
+            return NotFound("You have not reviewed any visible movies yet.");
+
+        return await RecommendFromMovieIdsAsync(reviewedMovieIds, req?.Count ?? DefaultRecommendationCount);
+    }
+
+    [HttpPost("recommend/ai")]
+    [Authorize]
+    public async Task<IActionResult> RecommendFromAi([FromBody] RecommendCountRequest? req)
+    {
+        var count = NormalizeCount(req?.Count ?? DefaultRecommendationCount);
+
+        string generatedDescription;
+        try
+        {
+            generatedDescription = await chatService.GenerateRandomMovieTasteDescription();
+        }
+        catch (Exception ex)
+        {
+            var fallbackDescriptions = await db.Movies
+                .Where(m => m.IsVisible && m.Description != null)
+                .OrderBy(_ => Guid.NewGuid())
+                .Take(3)
+                .Select(m => m.Description!)
+                .ToListAsync();
+
+            generatedDescription = BuildFallbackDescription(fallbackDescriptions);
+
+            if (string.IsNullOrWhiteSpace(generatedDescription))
+                return StatusCode(502, $"AI generation failed: {ex.Message}");
+        }
+
+        if (string.IsNullOrWhiteSpace(generatedDescription))
+            return StatusCode(502, "AI returned an empty description.");
+
+        try
+        {
+            var results = await SearchAndFillAsync(generatedDescription, new HashSet<int>(), count);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(502, ex.Message);
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Generate([FromQuery] int count = DefaultRecommendationCount)
+    {
+        var clampedCount = NormalizeCount(count);
+
+        var seedIds = await db.Movies
+            .Where(m => m.IsVisible && m.Description != null)
+            .OrderBy(_ => Guid.NewGuid())
+            .Take(3)
+            .Select(m => m.Id)
+            .ToListAsync();
+
+        if (seedIds.Count == 0)
+            return Ok(Array.Empty<RecommendResultDto>());
+
+        return await RecommendFromMovieIdsAsync(seedIds, clampedCount);
+    }
+
+    private async Task<IActionResult> RecommendFromMovieIdsAsync(IReadOnlyCollection<int>? movieIds, int requestedCount)
+    {
+        if (movieIds is null || movieIds.Count == 0)
             return BadRequest("At least one movie ID is required.");
 
-        var count = Math.Clamp(req.Count, 1, 50);
+        var count = NormalizeCount(requestedCount);
+        var movieIdSet = movieIds.ToHashSet();
 
         var descriptions = await db.Movies
-            .Where(m => req.MovieIds.Contains(m.Id) && m.IsVisible && m.Description != null)
+            .Where(m => movieIdSet.Contains(m.Id) && m.IsVisible && m.Description != null)
             .Select(m => m.Description!)
             .ToListAsync();
 
@@ -40,24 +137,43 @@ public class GenerateController(
         string generalizedDescription;
         try
         {
-            generalizedDescription = await chatService.GeneralizeMovieDescriptions([.. descriptions]);
+            generalizedDescription = await chatService.GeneralizeMovieDescriptions(descriptions.ToArray());
         }
         catch (Exception ex)
         {
-            return StatusCode(502, $"AI generalization failed: {ex.Message}");
+            generalizedDescription = BuildFallbackDescription(descriptions);
+
+            if (string.IsNullOrWhiteSpace(generalizedDescription))
+                return StatusCode(502, $"AI generalization failed: {ex.Message}");
         }
 
         if (string.IsNullOrWhiteSpace(generalizedDescription))
             return StatusCode(502, "AI returned an empty description.");
 
-        float[] vector;
         try
         {
-            vector = await embeddedService.VectorizeTextAsync(generalizedDescription);
+            var results = await SearchAndFillAsync(generalizedDescription, movieIdSet, count);
+            return Ok(results);
         }
         catch (Exception ex)
         {
-            return StatusCode(502, $"Vectorization failed: {ex.Message}");
+            return StatusCode(502, ex.Message);
+        }
+    }
+
+    private async Task<List<RecommendResultDto>> SearchAndFillAsync(
+        string seedDescription,
+        HashSet<int> excludedMovieIds,
+        int count)
+    {
+        float[] vector;
+        try
+        {
+            vector = await embeddedService.VectorizeTextAsync(seedDescription);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Vectorization failed: {ex.Message}", ex);
         }
 
         List<MovieSearchDocument> searchResults;
@@ -67,34 +183,59 @@ public class GenerateController(
         }
         catch (Exception ex)
         {
-            return StatusCode(502, $"Search failed: {ex.Message}");
+            throw new InvalidOperationException($"Search failed: {ex.Message}", ex);
         }
 
-        var inputIds = req.MovieIds.ToHashSet();
-        var results = searchResults
-            .Where(d => !inputIds.Contains(int.TryParse(d.Id, out var id) ? id : -1))
-            .Select(d => new RecommendResultDto(d.Id, d.Title, d.PosterUrl, d.Description, d.Genres));
+        var seenMovieIds = new HashSet<int>(excludedMovieIds);
+        var results = new List<RecommendResultDto>();
 
-        return Ok(results);
+        foreach (var document in searchResults)
+        {
+            if (!int.TryParse(document.Id, out var movieId))
+                continue;
+
+            if (!seenMovieIds.Add(movieId))
+                continue;
+
+            results.Add(ToRecommendResult(document));
+
+            if (results.Count == count)
+                return results;
+        }
+
+        if (results.Count < count)
+        {
+            var fallbackMovies = await db.Movies
+                .Include(m => m.MovieGenres)
+                    .ThenInclude(mg => mg.Genre)
+                .Where(m => m.IsVisible && !seenMovieIds.Contains(m.Id))
+                .OrderBy(_ => Guid.NewGuid())
+                .Take(count - results.Count)
+                .ToListAsync();
+
+            foreach (var movie in fallbackMovies)
+            {
+                if (!seenMovieIds.Add(movie.Id))
+                    continue;
+
+                results.Add(ToRecommendResult(movie));
+
+                if (results.Count == count)
+                    break;
+            }
+        }
+
+        return results;
     }
 
-    // GET /api/generate — 9 random movies from the database
-    [HttpGet]
-    public async Task<IActionResult> Generate()
+    private static int NormalizeCount(int requestedCount) => Math.Clamp(requestedCount, 1, 50);
+
+    private static string BuildFallbackDescription(IEnumerable<string> descriptions)
     {
-        var totalCount = await db.Movies.CountAsync(m => m.IsVisible);
-        if (totalCount == 0) return Ok(Array.Empty<MovieSummaryDto>());
-
-        var skip = new Random().Next(0, Math.Max(0, totalCount - 9));
-
-        var movies = await db.Movies
-            .Include(m => m.Reviews)
-            .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
-            .Where(m => m.IsVisible)
-            .Skip(skip)
-            .Take(9)
-            .ToListAsync();
-
-        return Ok(movies.Select(ToSummary));
+        return string.Join("\n\n", descriptions
+            .Where(description => !string.IsNullOrWhiteSpace(description))
+            .Select(description => description.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Take(5));
     }
 }

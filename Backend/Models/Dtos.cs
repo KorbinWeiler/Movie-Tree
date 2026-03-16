@@ -80,6 +80,8 @@ public record WatchLaterDto(
 
 public record PickedMovieDto(byte Position, MovieSummaryDto Movie);
 
+public record RecommendCountRequest(int Count = 10);
+
 public record RecommendRequest(List<int> MovieIds, int Count = 10);
 
 public record RecommendResultDto(

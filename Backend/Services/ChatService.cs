@@ -68,4 +68,38 @@ public class ChatService
 
         return response.Candidates[0].Content?.Parts?[0].Text ?? string.Empty;
     }
+
+    public async Task<string> GenerateRandomMovieTasteDescription()
+    {
+        var response = await _client.Models.GenerateContentAsync(
+            model: ModelName,
+            contents: "Generate a random movie taste profile.",
+            config: new GenerateContentConfig
+            {
+                SystemInstruction = new Content
+                {
+                    Parts =
+                    [
+                        new Part
+                        {
+                            Text = """
+                                    You generate a single, vivid movie-preference description.
+                                    Invent a fully unconstrained random cinematic taste profile that could be used to recommend movies.
+                                    Mention tone, pacing, themes, genres, and storytelling traits.
+                                    Return only the description text with no bullet points, labels, or commentary.
+                                    Keep it between 60 and 120 words.
+                                    """
+                        }
+                    ]
+                }
+            }
+        );
+
+        if (response.Candidates is null || response.Candidates.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return response.Candidates[0].Content?.Parts?[0].Text ?? string.Empty;
+    }
 }
