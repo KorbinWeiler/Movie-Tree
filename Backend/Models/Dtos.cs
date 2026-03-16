@@ -79,3 +79,13 @@ public record WatchLaterDto(
 // ── Generate DTOs ────────────────────────────────────────────────────────────
 
 public record PickedMovieDto(byte Position, MovieSummaryDto Movie);
+
+public record RecommendRequest(List<int> MovieIds, int Count = 10);
+
+public record RecommendResultDto(
+    string Id,
+    string Title,
+    string? PosterUrl,
+    string? Description,
+    string[] Genres
+);

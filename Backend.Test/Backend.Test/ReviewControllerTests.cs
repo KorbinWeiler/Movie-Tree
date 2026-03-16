@@ -5,6 +5,13 @@ namespace Backend.Test;
 
 public class ReviewControllerTests
 {
+    private static ReviewController CreateController(AppDbContext db)
+    {
+        var embeddedService = new EmbeddedService("https://example.cognitiveservices.azure.com", "test-key");
+        var searchService = new SearchService("example-service", "test-index", "test-key");
+        return new ReviewController(db, embeddedService, searchService);
+    }
+
     [Fact]
     public async Task Create_Returns_BadRequest_When_Rating_Is_Out_Of_Range()
     {
@@ -12,7 +19,7 @@ public class ReviewControllerTests
         db.Movies.Add(new Movie { Id = 1, Title = "Movie", IsVisible = true });
         await db.SaveChangesAsync();
 
-        var controller = new ReviewController(db);
+        var controller = CreateController(db);
         TestHelpers.SetUser(controller, "user-1");
 
         var action = await controller.Create(new CreateReviewRequest(1, 0, "too low"));
@@ -39,7 +46,7 @@ public class ReviewControllerTests
         });
         await db.SaveChangesAsync();
 
-        var controller = new ReviewController(db);
+        var controller = CreateController(db);
         TestHelpers.SetUser(controller, "user-1");
 
         var action = await controller.Create(new CreateReviewRequest(1, 9, "new one"));
@@ -63,7 +70,7 @@ public class ReviewControllerTests
         );
         await db.SaveChangesAsync();
 
-        var controller = new ReviewController(db);
+        var controller = CreateController(db);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext(),
