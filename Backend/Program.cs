@@ -100,6 +100,18 @@ builder.Services.AddSingleton<SearchService>(_ =>
         Environment.GetEnvironmentVariable("AZURE_SEARCH_API_KEY")!);
 });
 
+var configuredCorsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+var envCorsOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+var explicitAllowedOrigins = configuredCorsOrigins
+    .Concat(envCorsOrigins)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
 
 builder.Services.AddCors(options =>
 {
@@ -112,11 +124,15 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowStaticWebsite", policy => {
         policy.SetIsOriginAllowed(origin =>
               {
-                  var host = new Uri(origin).Host;
+                  if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+                  var host = uri.Host;
                   // Allow any localhost port for development
                   if (host == "localhost" || host == "127.0.0.1") return true;
                   // Allow Azure Static Web Apps (both URL formats)
-                  if (origin.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
+                  if (host.Equals("azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
+                  if (host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
+                  // Allow explicitly configured production frontend origins
+                  if (explicitAllowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
                   return false;
               })
               .AllowAnyHeader()
@@ -139,17 +155,31 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+var runStartupTasks = builder.Configuration.GetValue("StartupTasks:RunOnStartup", app.Environment.IsDevelopment());
+
+if (runStartupTasks)
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-    var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+        var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    var searchService = scope.ServiceProvider.GetRequiredService<SearchService>();
-    await searchService.EnsureIndexAsync();
+        var searchService = scope.ServiceProvider.GetRequiredService<SearchService>();
+        await searchService.EnsureIndexAsync();
 
-    await DbSeeder.SeedGenresAsync(scope.ServiceProvider, seederLogger);
-    await DbSeeder.SeedMoviesAsync(scope.ServiceProvider, seederLogger);
+        await DbSeeder.SeedGenresAsync(scope.ServiceProvider, seederLogger);
+        await DbSeeder.SeedMoviesAsync(scope.ServiceProvider, seederLogger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Startup tasks failed. API will continue to run, but migrations/indexing/seeding did not complete.");
+    }
+}
+else
+{
+    app.Logger.LogInformation("Startup tasks are disabled (StartupTasks:RunOnStartup=false).");
 }
 
 app.Run();
