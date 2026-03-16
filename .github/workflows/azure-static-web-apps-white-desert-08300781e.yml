@@ -66,6 +66,7 @@ jobs:
             exit 1
           fi
       - name: Build And Deploy
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
