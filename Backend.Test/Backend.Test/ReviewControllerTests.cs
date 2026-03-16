@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Backend.Test;
 
@@ -9,7 +10,7 @@ public class ReviewControllerTests
     {
         var embeddedService = new EmbeddedService("https://example.cognitiveservices.azure.com", "test-key");
         var searchService = new SearchService("example-service", "test-index", "test-key");
-        return new ReviewController(db, embeddedService, searchService);
+        return new ReviewController(db, embeddedService, searchService, NullLogger<ReviewController>.Instance);
     }
 
     [Fact]
@@ -83,6 +84,40 @@ public class ReviewControllerTests
         var items = payload.ToList();
 
         Assert.Single(items);
+        Assert.Equal(ReviewVisibility.Public, items[0].Visibility);
+    }
+
+    [Fact]
+    public async Task Create_PublicReview_Appears_In_PublicFeed()
+    {
+        await using var db = TestHelpers.CreateDbContext();
+
+        db.Users.Add(new ApplicationUser { Id = "user-1", UserName = "alice", Email = "alice@example.com" });
+        db.Movies.Add(new Movie { Id = 1, Title = "Movie", IsVisible = true });
+        await db.SaveChangesAsync();
+
+        var reviewController = CreateController(db);
+        TestHelpers.SetUser(reviewController, "user-1");
+
+        var createResult = await reviewController.Create(new CreateReviewRequest(1, 8, "Great movie!", ReviewVisibility.Public));
+        Assert.IsType<CreatedAtActionResult>(createResult);
+
+        var feedController = new FeedController(db)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext(),
+            }
+        };
+
+        var feedResult = await feedController.Public();
+        var ok = Assert.IsType<OkObjectResult>(feedResult);
+        var payload = Assert.IsAssignableFrom<IEnumerable<ReviewDto>>(ok.Value);
+        var items = payload.ToList();
+
+        Assert.Single(items);
+        Assert.Equal(1, items[0].MovieId);
+        Assert.Equal("Great movie!", items[0].ReviewText);
         Assert.Equal(ReviewVisibility.Public, items[0].Visibility);
     }
 }

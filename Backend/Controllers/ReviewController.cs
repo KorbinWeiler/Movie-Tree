@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 public class ReviewController(
     AppDbContext db,
     EmbeddedService embeddedService,
-    SearchService searchService) : ControllerBase
+    SearchService searchService,
+    ILogger<ReviewController> logger) : ControllerBase
 {
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -63,9 +64,10 @@ public class ReviewController(
         {
             await SyncMovieDocumentToSearchAsync(req.MovieId);
         }
-        catch
+        catch (Exception ex)
         {
             // Review creation should not fail if external embedding/search services are unavailable.
+            logger.LogWarning(ex, "Failed to sync movie {MovieId} to search index after review creation.", req.MovieId);
         }
 
         await db.Entry(review).Reference(r => r.User).LoadAsync();
