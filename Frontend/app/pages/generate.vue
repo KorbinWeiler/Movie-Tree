@@ -17,29 +17,20 @@
         hide-details
       />
 
-      <v-autocomplete
-        v-if="generationType === 'selected'"
-        v-model="selectedMovieIds"
-        v-model:search="movieSearch"
-        :items="movieOptions"
-        item-title="title"
-        item-value="id"
-        chips
-        closable-chips
-        multiple
-        clearable
-        label="Select Movies"
-        density="compact"
-        variant="outlined"
-        hide-details
-        :loading="isSearchingMovies"
-      />
+      <div v-if="generationType === 'selected'" class="selection-summary text-body-2">
+        <span v-if="reviewedMovieOptions.length">
+          {{ selectedMovieIds.length }} of {{ reviewedMovieOptions.length }} reviewed movies selected.
+        </span>
+        <span v-else>
+          Review some movies first to use this mode.
+        </span>
+      </div>
 
       <v-btn
         color="primary"
         rounded="pill"
         :loading="generateStore.isGenerating"
-        :disabled="generationType === 'selected' && selectedMovieIds.length === 0"
+        :disabled="generationType === 'selected' && reviewedMovieOptions.length === 0"
         class="generate-btn"
         @click="generateNow"
       >
@@ -56,7 +47,7 @@
         md="3"
         lg="2"
       >
-          <div class="position-relative">
+        <div class="position-relative">
           <div class="result-number">{{ index + 1 }}</div>
           <MovieCard :movie="movie" />
         </div>
@@ -78,6 +69,50 @@
         Pick a mode and click Generate.
       </p>
     </div>
+
+    <v-dialog v-model="isSelectDialogOpen" max-width="560">
+      <v-card rounded="xl">
+        <v-card-title class="text-h6 font-weight-bold">Select Reviewed Movies</v-card-title>
+        <v-card-text>
+          <div v-if="reviewedMovieOptions.length" class="d-flex flex-column ga-2">
+            <v-list lines="two" class="rounded-lg border-thin">
+              <v-list-item
+                v-for="movie in reviewedMovieOptions"
+                :key="movie.id"
+                @click="toggleSelectedMovie(movie.id)"
+              >
+                <template #prepend>
+                  <v-checkbox-btn
+                    :model-value="selectedMovieIds.includes(movie.id)"
+                    @update:model-value="toggleSelectedMovie(movie.id)"
+                  />
+                </template>
+
+                <v-list-item-title>{{ movie.title }}</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ movie.reviewCount }} review{{ movie.reviewCount === 1 ? '' : 's' }}
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </div>
+          <div v-else class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.6)">
+            You do not have any reviewed movies yet.
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6 pt-0 d-flex justify-end ga-2">
+          <v-btn variant="text" rounded="pill" @click="isSelectDialogOpen = false">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            rounded="pill"
+            :disabled="selectedMovieIds.length === 0"
+            :loading="generateStore.isGenerating"
+            @click="generateSelected"
+          >
+            Generate
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -101,12 +136,21 @@ interface MovieSummaryDto {
   genres: GenreDto[]
 }
 
+interface ReviewedMovieOption {
+  id: number
+  title: string
+  posterUrl: string | null
+  reviewCount: number
+}
+
 type GenerationType = 'all' | 'selected' | 'ai'
 
+const RECOMMENDATION_COUNT = 10
+
 const generateStore = useGenerateStore()
+const userStore = useUserStore()
 const { apiFetch } = useApi()
 
-// Start empty on page load; user must explicitly click Generate.
 generateStore.setPicks([])
 
 const generationType = ref<GenerationType>('all')
@@ -117,78 +161,114 @@ const generationOptions = [
 ]
 
 const selectedMovieIds = ref<number[]>([])
-const movieSearch = ref('')
-const movieOptions = ref<MovieSummaryDto[]>([])
-const isSearchingMovies = ref(false)
+const isSelectDialogOpen = ref(false)
+
+function toNumber(value: unknown): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  return 0
+}
 
 function normalizeMovie(raw: any): MovieSummaryDto {
   return {
-    id: raw?.id ?? raw?.Id ?? 0,
-    title: raw?.title ?? raw?.Title ?? '',
+    id: toNumber(raw?.id ?? raw?.Id),
+    title: String(raw?.title ?? raw?.Title ?? '').trim(),
     posterUrl: raw?.posterUrl ?? raw?.PosterUrl ?? null,
     releaseDate: raw?.releaseDate ?? raw?.ReleaseDate ?? null,
     averageRating: raw?.averageRating ?? raw?.AverageRating ?? null,
-    reviewCount: raw?.reviewCount ?? raw?.ReviewCount ?? 0,
+    reviewCount: toNumber(raw?.reviewCount ?? raw?.ReviewCount),
     genres: (raw?.genres ?? raw?.Genres ?? []).map((g: any) => ({
-      id: g?.id ?? g?.Id ?? 0,
-      name: g?.name ?? g?.Name ?? '',
+      id: toNumber(g?.id ?? g?.Id),
+      name: String(g?.name ?? g?.Name ?? '').trim(),
     })),
   }
 }
 
 function normalizeMovies(raw: any): MovieSummaryDto[] {
   if (!Array.isArray(raw)) return []
-  return raw.map(normalizeMovie).filter(m => m.id > 0 && m.title.length > 0)
+  return raw.map(normalizeMovie).filter(movie => movie.id > 0 && movie.title.length > 0)
 }
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const reviewedMovieOptions = computed<ReviewedMovieOption[]>(() => {
+  const byMovieId = new Map<number, ReviewedMovieOption>()
 
-watch(movieSearch, (value) => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(async () => {
-    const q = value?.trim() ?? ''
-    if (q.length < 2) {
-      movieOptions.value = []
-      return
+  for (const review of userStore.reviews) {
+    if (!byMovieId.has(review.movieId)) {
+      byMovieId.set(review.movieId, {
+        id: review.movieId,
+        title: review.movieTitle,
+        posterUrl: review.moviePoster,
+        reviewCount: 0,
+      })
     }
 
-    isSearchingMovies.value = true
-    try {
-      const raw = await apiFetch<any[]>(`/movie?q=${encodeURIComponent(q)}&pageSize=30`)
-      movieOptions.value = normalizeMovies(raw)
-    } catch {
-      movieOptions.value = []
-    } finally {
-      isSearchingMovies.value = false
-    }
-  }, 300)
+    const current = byMovieId.get(review.movieId)
+    if (current) current.reviewCount += 1
+  }
+
+  return Array.from(byMovieId.values()).sort((left, right) => left.title.localeCompare(right.title))
 })
 
-async function generateNow() {
-  if (generationType.value === 'all' || generationType.value === 'ai') {
-    generateStore.isGenerating = true
-    try {
-        const raw = await apiFetch<any[]>('/generate')
-        console.debug('[generate.vue] /generate raw response:', raw)
-        const normalized = normalizeMovies(raw)
-        console.debug('[generate.vue] /generate normalized:', normalized)
-        generateStore.setPicks(normalized)
-        console.debug('[generate.vue] generateStore.picks after set:', generateStore.picks)
-    } finally {
-      generateStore.isGenerating = false
-    }
+try {
+  await userStore.fetchMyReviews()
+} catch {
+  // Ignore page bootstrap review fetch errors.
+}
+
+watch(generationType, value => {
+  if (value !== 'selected') {
+    isSelectDialogOpen.value = false
+  }
+})
+
+function toggleSelectedMovie(movieId: number) {
+  if (selectedMovieIds.value.includes(movieId)) {
+    selectedMovieIds.value = selectedMovieIds.value.filter(id => id !== movieId)
     return
   }
 
-  if (selectedMovieIds.value.length === 0) return
+  selectedMovieIds.value = [...selectedMovieIds.value, movieId]
+}
 
+async function loadRecommendations(url: string, body: Record<string, unknown>) {
   generateStore.isGenerating = true
   try {
-    const raw = await apiFetch<any[]>(`/movie/batch?ids=${selectedMovieIds.value.join(',')}`)
+    const raw = await apiFetch<any[]>(url, {
+      method: 'POST',
+      body,
+    })
     generateStore.setPicks(normalizeMovies(raw))
+    generateStore.persistPicks()
   } finally {
     generateStore.isGenerating = false
   }
+}
+
+async function generateSelected() {
+  if (selectedMovieIds.value.length === 0) return
+
+  isSelectDialogOpen.value = false
+  await loadRecommendations('/generate/recommend', {
+    movieIds: selectedMovieIds.value,
+    count: RECOMMENDATION_COUNT,
+  })
+}
+
+async function generateNow() {
+  if (generationType.value === 'selected') {
+    isSelectDialogOpen.value = true
+    return
+  }
+
+  if (generationType.value === 'all') {
+    await loadRecommendations('/generate/recommend/all', { count: RECOMMENDATION_COUNT })
+    return
+  }
+
+  await loadRecommendations('/generate/recommend/ai', { count: RECOMMENDATION_COUNT })
 }
 </script>
 
@@ -208,6 +288,10 @@ async function generateNow() {
   text-transform: none;
   font-weight: 600;
   color: rgb(var(--v-theme-on-primary));
+}
+
+.selection-summary {
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 .result-number {

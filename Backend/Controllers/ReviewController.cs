@@ -5,7 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ReviewController(AppDbContext db) : ControllerBase
+public class ReviewController(
+    AppDbContext db,
+    EmbeddedService embeddedService,
+    SearchService searchService,
+    ILogger<ReviewController> logger) : ControllerBase
 {
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -54,6 +58,17 @@ public class ReviewController(AppDbContext db) : ControllerBase
 
         db.Reviews.Add(review);
         await db.SaveChangesAsync();
+
+        // Keep the search index refreshed with the latest movie/review context.
+        try
+        {
+            await SyncMovieDocumentToSearchAsync(req.MovieId);
+        }
+        catch (Exception ex)
+        {
+            // Review creation should not fail if external embedding/search services are unavailable.
+            logger.LogWarning(ex, "Failed to sync movie {MovieId} to search index after review creation.", req.MovieId);
+        }
 
         await db.Entry(review).Reference(r => r.User).LoadAsync();
         await db.Entry(review).Reference(r => r.Movie).LoadAsync();
@@ -139,5 +154,54 @@ public class ReviewController(AppDbContext db) : ControllerBase
 
         var reviews = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
         return Ok(reviews.Select(ToDto));
+    }
+
+    private async Task SyncMovieDocumentToSearchAsync(int movieId)
+    {
+        var movie = await db.Movies
+            .Include(m => m.MovieGenres)
+                .ThenInclude(mg => mg.Genre)
+            .Include(m => m.Reviews)
+            .FirstOrDefaultAsync(m => m.Id == movieId && m.IsVisible);
+
+        if (movie is null)
+            return;
+
+        var genres = movie.MovieGenres
+            .Select(mg => mg.Genre.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var reviewSnippets = movie.Reviews
+            .Where(r => !string.IsNullOrWhiteSpace(r.ReviewText))
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(10)
+            .Select(r => r.ReviewText!.Trim());
+
+        var combinedText = string.Join("\n", new[]
+        {
+            movie.Title,
+            movie.Description,
+            genres.Length > 0 ? $"Genres: {string.Join(", ", genres)}" : null,
+            reviewSnippets.Any() ? $"Recent reviews: {string.Join(" | ", reviewSnippets)}" : null,
+        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+        if (string.IsNullOrWhiteSpace(combinedText))
+            return;
+
+        var vector = await embeddedService.VectorizeTextAsync(combinedText);
+
+        var document = new MovieSearchDocument
+        {
+            Id = movie.Id.ToString(),
+            Title = movie.Title,
+            Description = movie.Description,
+            PosterUrl = movie.PosterUrl,
+            Genres = genres,
+            DescriptionVector = vector,
+        };
+
+        await searchService.UpsertMovieAsync(document);
     }
 }

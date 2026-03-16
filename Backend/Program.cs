@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,11 @@ if (File.Exists(envFile))
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddOpenApi();
 
 // Database
@@ -74,16 +79,27 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<TMDBService>();
-//builder.Services.AddScoped<SearchService>();
-// builder.Services.AddScoped<EmbeddedService>(sp =>
-// {
-//     var config = sp.GetRequiredService<IConfiguration>();
-//     var endpoint = config["EmbeddedService:Endpoint"] 
-//         ?? throw new InvalidOperationException("EmbeddedService:Endpoint is not configured.");
-//     var apiKey = config["EmbeddedService:ApiKey"] 
-//         ?? throw new InvalidOperationException("EmbeddedService:ApiKey is not configured.");
-//     return new EmbeddedService(endpoint, apiKey);
-// });
+
+// AI / Search services — keyed off .env variables
+builder.Services.AddSingleton<ChatService>(_ =>
+    new ChatService(Environment.GetEnvironmentVariable("GEMINI_API_KEY")!));
+
+builder.Services.AddSingleton<EmbeddedService>(_ =>
+    new EmbeddedService(
+        Environment.GetEnvironmentVariable("AZURE_VISION_ENDPOINT")!,
+        Environment.GetEnvironmentVariable("AZURE_VISION_KEY_1")!));
+
+builder.Services.AddSingleton<SearchService>(_ =>
+{
+    // AZURE_SEARCH_URL format: https://{serviceName}.search.windows.net
+    var searchUrl = Environment.GetEnvironmentVariable("AZURE_SEARCH_URL")!;
+    var serviceName = new Uri(searchUrl).Host.Replace(".search.windows.net", "");
+    return new SearchService(
+        serviceName,
+        Environment.GetEnvironmentVariable("AZURE_SEARCH_INDEX_NAME")!,
+        Environment.GetEnvironmentVariable("AZURE_SEARCH_API_KEY")!);
+});
+
 
 builder.Services.AddCors(options =>
 {
@@ -128,6 +144,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
     var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    var searchService = scope.ServiceProvider.GetRequiredService<SearchService>();
+    await searchService.EnsureIndexAsync();
+
     await DbSeeder.SeedGenresAsync(scope.ServiceProvider, seederLogger);
     await DbSeeder.SeedMoviesAsync(scope.ServiceProvider, seederLogger);
 }
