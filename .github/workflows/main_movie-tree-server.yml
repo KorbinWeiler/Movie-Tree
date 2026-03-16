@@ -9,11 +9,13 @@ on:
       - main
     paths:
       - 'Backend/**'
+      - 'Backend.Test/**'
   pull_request:
     branches:
       - main
     paths:
       - 'Backend/**'
+      - 'Backend.Test/**'
   workflow_dispatch:
 
 jobs:
@@ -25,6 +27,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Backend/**/packages.lock.json', 'Backend/**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4
         with:
@@ -32,6 +42,10 @@ jobs:
 
       - name: Build with dotnet
         run: dotnet build --configuration Release
+        working-directory: Backend
+
+      - name: Run backend tests
+        run: dotnet test ../Backend.Test/Movie-Tree-Tests.slnx --configuration Release --no-build
         working-directory: Backend
 
       - name: dotnet publish
