@@ -33,7 +33,11 @@
     </div>
 
     <!-- Recent Reviews -->
-    <div v-if="userStore.reviews.length">
+    <div v-if="isLoading" class="d-flex flex-column ga-3">
+      <v-skeleton-loader v-for="item in 3" :key="item" type="article" rounded="lg" />
+    </div>
+
+    <div v-else-if="userStore.reviews.length">
       <div class="section-label mb-3">RECENT REVIEWS</div>
       <div class="d-flex flex-column ga-3">
         <ReviewCard
@@ -65,17 +69,43 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import ReviewCard from '~/components/ReviewCard.vue'
+
 definePageMeta({ middleware: 'auth' })
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const isLoading = ref(false)
 
-try {
-  await Promise.all([
-    userStore.fetchMyReviews(),
-    userStore.fetchWatchLater(),
-  ])
-} catch { /* ignore */ }
+const loadProfileData = async () => {
+  isLoading.value = true
+
+  try {
+    if (authStore.isLoggedIn && !authStore.user) {
+      await authStore.fetchMe()
+    }
+
+    await Promise.all([
+      userStore.fetchMyReviews(),
+      userStore.fetchWatchLater(),
+    ])
+  } catch {
+    // Keep existing state on profile load failures.
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadProfileData()
+})
+
+watch(() => authStore.user?.id, (userId, previousUserId) => {
+  if (userId && userId !== previousUserId) {
+    void loadProfileData()
+  }
+})
 
 const initial = computed(() =>
   authStore.user?.userName?.charAt(0).toUpperCase() ?? '?'

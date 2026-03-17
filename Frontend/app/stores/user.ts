@@ -35,7 +35,13 @@ export const useUserStore = defineStore('user', {
     async fetchMyReviews() {
       const { apiFetch } = useApi()
       const auth = useAuthStore()
+
+      if (!auth.user && auth.isLoggedIn) {
+        await auth.fetchMe()
+      }
+
       if (!auth.user) return
+
       try {
         this.reviews = await apiFetch<ReviewDto[]>(`/review/user/${auth.user.id}`)
       } catch { /* keep existing state */ }

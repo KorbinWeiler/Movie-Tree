@@ -38,7 +38,7 @@
       </v-btn>
     </div>
 
-    <v-row v-if="generateStore.picks.length" dense>
+    <v-row v-if="generateStore.picks.length" dense class="results-row">
       <v-col
         v-for="(movie, index) in generateStore.picks"
         :key="movie.id"
@@ -54,7 +54,7 @@
       </v-col>
     </v-row>
 
-    <v-row v-else-if="generateStore.isGenerating" dense>
+    <v-row v-else-if="generateStore.isGenerating" dense class="results-row">
       <v-col v-for="n in 9" :key="n" cols="6" sm="4" md="3" lg="2">
         <v-skeleton-loader type="card" rounded="lg" />
       </v-col>
@@ -145,7 +145,7 @@ interface ReviewedMovieOption {
 
 type GenerationType = 'all' | 'selected' | 'ai'
 
-const RECOMMENDATION_COUNT = 10
+const RECOMMENDATION_COUNT = 30
 
 const generateStore = useGenerateStore()
 const userStore = useUserStore()
@@ -309,5 +309,9 @@ async function generateNow() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.results-row {
+  margin-top: 16px;
 }
 </style>
