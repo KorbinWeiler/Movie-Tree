@@ -37,6 +37,23 @@
       <!-- Movie Info -->
       <div class="review-movie-info flex-grow-1 d-flex flex-column justify-center">
         <div class="text-h6 font-weight-bold mb-1">{{ review.movieTitle }}</div>
+
+        <div v-if="movieMeta.length" class="review-meta mb-2">
+          <span
+            v-for="item in movieMeta"
+            :key="item"
+            class="review-meta-item"
+          >
+            {{ item }}
+          </span>
+        </div>
+
+        <p
+          v-if="review.movieDescription"
+          class="text-body-2 mb-0 review-description"
+        >
+          {{ review.movieDescription }}
+        </p>
       </div>
 
       <!-- Score -->
@@ -76,11 +93,40 @@ const props = defineProps<{
     reviewText?: string | null
     movieTitle: string
     moviePoster?: string | null
+    movieDescription?: string | null
+    movieReleaseDate?: string | null
+    movieRuntimeMinutes?: number | null
   }
 }>()
 
 const formattedDate = computed(() =>
   new Date(props.review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+)
+
+const formattedReleaseDate = computed(() => {
+  if (!props.review.movieReleaseDate) return null
+
+  return new Date(props.review.movieReleaseDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+})
+
+const formattedRuntime = computed(() => {
+  const runtime = props.review.movieRuntimeMinutes
+  if (!runtime) return null
+
+  const hours = Math.floor(runtime / 60)
+  const minutes = runtime % 60
+
+  if (hours === 0) return `${minutes}m`
+  if (minutes === 0) return `${hours}h`
+  return `${hours}h ${minutes}m`
+})
+
+const movieMeta = computed(() =>
+  [formattedReleaseDate.value, formattedRuntime.value].filter((value): value is string => Boolean(value))
 )
 
 const scoreColor = computed(() => {
@@ -99,6 +145,32 @@ const scoreColor = computed(() => {
 .review-poster {
   flex-shrink: 0;
   width: 80px;
+}
+
+.review-movie-info {
+  min-width: 0;
+}
+
+.review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.review-meta-item {
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.review-description {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  display: -webkit-box;
+  overflow: hidden;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .poster-wrap {

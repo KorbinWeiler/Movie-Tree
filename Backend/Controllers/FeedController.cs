@@ -12,6 +12,7 @@ public class FeedController(AppDbContext db) : ControllerBase
     private static ReviewDto ToDto(Review r) => new(
         r.Id, r.UserId, r.User.UserName!, r.User.ProfilePictureUrl,
         r.MovieId, r.Movie.Title, r.Movie.PosterUrl,
+        r.Movie.Description, r.Movie.ReleaseDate, r.Movie.RuntimeMinutes,
         r.Rating, r.ReviewText, r.Visibility, r.CreatedAt, r.UpdatedAt
     );
 
@@ -21,10 +22,14 @@ public class FeedController(AppDbContext db) : ControllerBase
     {
         if (pageSize > 50) pageSize = 50;
 
+        var userId = User.Identity?.IsAuthenticated == true ? CurrentUserId : null;
+
         var reviews = await db.Reviews
             .Include(r => r.User)
             .Include(r => r.Movie)
-            .Where(r => r.Visibility == ReviewVisibility.Public && r.Movie.IsVisible)
+            .Where(r => r.Visibility == ReviewVisibility.Public &&
+                        r.Movie.IsVisible &&
+                        (userId == null || r.UserId != userId))
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
