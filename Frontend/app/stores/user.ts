@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import type { MovieSummaryDto } from './movie'
-import { useFeedStore } from './feed'
 
 export interface ReviewDto {
   id: number
@@ -65,14 +64,6 @@ export const useUserStore = defineStore('user', {
         body: { movieId, rating, reviewText, visibility },
       })
       this.reviews.unshift(review)
-
-      const feedStore = useFeedStore()
-      if (review.visibility === 'Public') {
-        feedStore.publicFeed.unshift(review)
-      }
-      if (review.visibility === 'Public' || review.visibility === 'Friends') {
-        feedStore.friendsFeed.unshift(review)
-      }
 
       return review
     },

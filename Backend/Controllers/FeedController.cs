@@ -21,10 +21,14 @@ public class FeedController(AppDbContext db) : ControllerBase
     {
         if (pageSize > 50) pageSize = 50;
 
+        var userId = User.Identity?.IsAuthenticated == true ? CurrentUserId : null;
+
         var reviews = await db.Reviews
             .Include(r => r.User)
             .Include(r => r.Movie)
-            .Where(r => r.Visibility == ReviewVisibility.Public && r.Movie.IsVisible)
+            .Where(r => r.Visibility == ReviewVisibility.Public &&
+                        r.Movie.IsVisible &&
+                        (userId == null || r.UserId != userId))
             .OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
