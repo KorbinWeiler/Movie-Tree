@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+let restoreSessionPromise: Promise<void> | null = null
+
 interface AuthResponse {
   token: string
   expiresAt: string
@@ -35,6 +37,8 @@ export const useAuthStore = defineStore('auth', {
     token: null as string | null,
     expiresAt: null as string | null,
     user: null as MeResponse | null,
+    sessionRestored: false,
+    isRestoringSession: false,
   }),
 
   getters: {
@@ -51,6 +55,42 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async restoreSession(force = false) {
+      if (!import.meta.client) return
+
+      if (force) {
+        this.sessionRestored = false
+        restoreSessionPromise = null
+      }
+
+      if (this.sessionRestored && !force) return
+
+      if (restoreSessionPromise) {
+        await restoreSessionPromise
+        return
+      }
+
+      restoreSessionPromise = (async () => {
+        this.isRestoringSession = true
+
+        try {
+          this.init()
+
+          if (this.isLoggedIn) {
+            await this.fetchMe()
+          } else {
+            this.user = null
+          }
+        } finally {
+          this.sessionRestored = true
+          this.isRestoringSession = false
+          restoreSessionPromise = null
+        }
+      })()
+
+      await restoreSessionPromise
+    },
+
     async login(email: string, password: string) {
       const config = useRuntimeConfig()
       const raw = await $fetch<any>(`${config.public.apiBase}/auth/login`, {
@@ -60,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
       const res = normalizeAuthResponse(raw)
       this._setToken(res)
       await this.fetchMe()
+      this.sessionRestored = true
     },
 
     async register(username: string, email: string, password: string) {
@@ -71,10 +112,15 @@ export const useAuthStore = defineStore('auth', {
       const res = normalizeAuthResponse(raw)
       this._setToken(res)
       await this.fetchMe()
+      this.sessionRestored = true
     },
 
     async fetchMe() {
-      if (!this.token) return
+      if (!this.token) {
+        this.user = null
+        return
+      }
+
       try {
         const config = useRuntimeConfig()
         const raw = await $fetch<any>(`${config.public.apiBase}/auth/me`, {
@@ -97,6 +143,8 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.expiresAt = null
       this.user = null
+      this.sessionRestored = true
+      this.isRestoringSession = false
       if (import.meta.client) {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_expires')

@@ -1,5 +1,24 @@
 <template>
   <v-container class="pa-6" style="max-width: 720px">
+    <template v-if="showProfileSkeleton">
+      <div class="d-flex align-center ga-5 mb-8">
+        <v-skeleton-loader type="avatar" class="profile-avatar-skeleton" />
+        <div class="flex-grow-1 d-flex flex-column ga-2">
+          <v-skeleton-loader type="text" class="profile-line profile-line--title" />
+          <v-skeleton-loader type="text" class="profile-line profile-line--subtitle" />
+        </div>
+      </div>
+
+      <div class="d-flex ga-4 mb-8 flex-wrap">
+        <v-skeleton-loader v-for="item in 3" :key="item" type="card" class="stat-skeleton" />
+      </div>
+
+      <div class="d-flex flex-column ga-3">
+        <v-skeleton-loader v-for="item in 3" :key="`review-${item}`" type="article" rounded="lg" />
+      </div>
+    </template>
+
+    <template v-else>
 
     <!-- Header -->
     <div class="d-flex align-center ga-5 mb-8">
@@ -65,6 +84,8 @@
       <p class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.45)">No reviews yet.</p>
     </div>
 
+    </template>
+
   </v-container>
 </template>
 
@@ -82,9 +103,9 @@ const loadProfileData = async () => {
   isLoading.value = true
 
   try {
-    if (authStore.isLoggedIn && !authStore.user) {
-      await authStore.fetchMe()
-    }
+    await authStore.restoreSession()
+
+    if (!authStore.isLoggedIn || !authStore.user) return
 
     await Promise.all([
       userStore.fetchMyReviews(),
@@ -106,6 +127,10 @@ watch(() => authStore.user?.id, (userId, previousUserId) => {
     void loadProfileData()
   }
 })
+
+const showProfileSkeleton = computed(() =>
+  authStore.isRestoringSession || !authStore.sessionRestored || (authStore.isLoggedIn && !authStore.user) || isLoading.value
+)
 
 const initial = computed(() =>
   authStore.user?.userName?.charAt(0).toUpperCase() ?? '?'
@@ -137,5 +162,29 @@ const recentReviews = computed(() => userStore.reviews.slice(0, 3))
   min-width: 100px;
   flex: 1;
   border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.profile-avatar-skeleton {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.profile-line {
+  width: 100%;
+}
+
+.profile-line--title {
+  max-width: 220px;
+}
+
+.profile-line--subtitle {
+  max-width: 300px;
+}
+
+.stat-skeleton {
+  min-width: 100px;
+  flex: 1;
 }
 </style>

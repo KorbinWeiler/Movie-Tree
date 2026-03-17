@@ -36,6 +36,10 @@ export const useUserStore = defineStore('user', {
       const { apiFetch } = useApi()
       const auth = useAuthStore()
 
+      if (!auth.sessionRestored && import.meta.client) {
+        await auth.restoreSession()
+      }
+
       if (!auth.user && auth.isLoggedIn) {
         await auth.fetchMe()
       }
