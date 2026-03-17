@@ -12,6 +12,7 @@ public class FeedController(AppDbContext db) : ControllerBase
     private static ReviewDto ToDto(Review r) => new(
         r.Id, r.UserId, r.User.UserName!, r.User.ProfilePictureUrl,
         r.MovieId, r.Movie.Title, r.Movie.PosterUrl,
+        r.Movie.Description, r.Movie.ReleaseDate, r.Movie.RuntimeMinutes,
         r.Rating, r.ReviewText, r.Visibility, r.CreatedAt, r.UpdatedAt
     );
 

@@ -9,6 +9,9 @@ export interface ReviewDto {
   movieId: number
   movieTitle: string
   moviePoster: string | null
+  movieDescription: string | null
+  movieReleaseDate: string | null
+  movieRuntimeMinutes: number | null
   rating: number
   reviewText: string | null
   visibility: 'Public' | 'Friends' | 'Private'
