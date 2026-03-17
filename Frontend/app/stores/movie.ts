@@ -96,7 +96,7 @@ export const useMovieStore = defineStore('movie', {
     async fetchTrending() {
       const { apiFetch } = useApi()
       try {
-        const raw = await apiFetch<any[]>('/movie/temp-trending')
+        const raw = await apiFetch<any[]>('/movie/temp-trending?count=30')
         this.trending = normalizeMovies(raw)
       } catch (e) { console.error('[movie] fetchTrending failed:', e) }
     },

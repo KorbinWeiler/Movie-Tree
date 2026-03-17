@@ -11,7 +11,7 @@ public class GenerateController(
     EmbeddedService embeddedService,
     SearchService searchService) : ControllerBase
 {
-    private const int DefaultRecommendationCount = 10;
+    private const int DefaultRecommendationCount = 30;
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     private static MovieSummaryDto ToSummary(Movie m) => new(

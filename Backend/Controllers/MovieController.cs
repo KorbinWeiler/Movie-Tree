@@ -73,9 +73,9 @@ public class MovieController(AppDbContext db) : ControllerBase
 
     // GET /api/movie/temp-trending — random movies, used until real trending data exists
     [HttpGet("temp-trending")]
-    public async Task<IActionResult> TempTrending([FromQuery] int count = 10)
+    public async Task<IActionResult> TempTrending([FromQuery] int count = 30)
     {
-        if (count > 10) count = 10;
+        if (count > 30) count = 30;
         var total = await db.Movies.CountAsync(m => m.IsVisible);
         if (total == 0) return Ok(Array.Empty<MovieSummaryDto>());
 
