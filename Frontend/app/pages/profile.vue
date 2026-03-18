@@ -57,15 +57,37 @@
     </div>
 
     <div v-else-if="userStore.reviews.length">
-      <div class="section-label mb-3">RECENT REVIEWS</div>
+      <div class="d-flex flex-column ga-3 mb-4">
+        <div class="section-label">{{ reviewSectionLabel }}</div>
+        <v-text-field
+          v-model="reviewSearchQuery"
+          variant="outlined"
+          density="comfortable"
+          rounded="lg"
+          clearable
+          hide-details
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search by movie title or review text"
+          class="review-search"
+        />
+      </div>
+
       <div class="d-flex flex-column ga-3">
         <ReviewCard
-          v-for="review in recentReviews"
+          v-for="review in visibleReviews"
           :key="review.id"
           :review="review"
         />
       </div>
-      <div v-if="userStore.reviews.length > 3" class="d-flex justify-center mt-4">
+
+      <div v-if="!visibleReviews.length" class="d-flex flex-column align-center justify-center py-8 text-center">
+        <v-icon size="44" class="mb-3" style="color: rgba(var(--v-theme-on-surface), 0.18)">mdi-text-box-search-outline</v-icon>
+        <p class="text-body-2 mb-0" style="color: rgba(var(--v-theme-on-surface), 0.45)">
+          No reviews match "{{ reviewSearchQuery }}".
+        </p>
+      </div>
+
+      <div v-else-if="!hasActiveReviewSearch && userStore.reviews.length > 3" class="d-flex justify-center mt-4">
         <v-btn
           variant="outlined"
           rounded="pill"
@@ -98,6 +120,7 @@ definePageMeta({ middleware: 'auth' })
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const isLoading = ref(false)
+const reviewSearchQuery = ref('')
 
 const loadProfileData = async () => {
   isLoading.value = true
@@ -147,7 +170,27 @@ const stats = computed(() => [
   },
 ])
 
-const recentReviews = computed(() => userStore.reviews.slice(0, 3))
+const hasActiveReviewSearch = computed(() => reviewSearchQuery.value.trim().length > 0)
+
+const filteredReviews = computed(() => {
+  const query = reviewSearchQuery.value.trim().toLowerCase()
+
+  if (!query) return userStore.reviews
+
+  return userStore.reviews.filter(review => {
+    const haystacks = [review.movieTitle, review.reviewText ?? '']
+
+    return haystacks.some(value => value.toLowerCase().includes(query))
+  })
+})
+
+const reviewSectionLabel = computed(() =>
+  hasActiveReviewSearch.value ? 'SEARCH RESULTS' : 'RECENT REVIEWS'
+)
+
+const visibleReviews = computed(() =>
+  hasActiveReviewSearch.value ? filteredReviews.value : filteredReviews.value.slice(0, 3)
+)
 </script>
 
 <style scoped>
@@ -162,6 +205,10 @@ const recentReviews = computed(() => userStore.reviews.slice(0, 3))
   min-width: 100px;
   flex: 1;
   border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.review-search :deep(.v-field) {
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .profile-avatar-skeleton {
