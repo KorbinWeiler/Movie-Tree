@@ -116,7 +116,7 @@ export const useGenerateStore = defineStore('generate', {
       const { apiFetch } = useApi()
       this.isGenerating = true
       try {
-        const raw = await apiFetch<any[]>('/generate')
+        const raw = await apiFetch<any[]>('/generate?count=30')
         this.picks = normalizeMovies(raw)
         if (import.meta.client) {
           const stored: StoredPicks = { date: todayString(), movies: this.picks }

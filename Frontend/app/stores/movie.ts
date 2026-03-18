@@ -95,9 +95,27 @@ export const useMovieStore = defineStore('movie', {
   actions: {
     async fetchTrending() {
       const { apiFetch } = useApi()
+      const desired = 30
       try {
-        const raw = await apiFetch<any[]>('/movie/temp-trending')
-        this.trending = normalizeMovies(raw)
+        // Prefer the real trending endpoint first
+        const raw = await apiFetch<any[]>(`/movie/trending?count=${desired}`)
+        let movies = normalizeMovies(raw)
+
+        // If the real trending endpoint returned fewer than requested,
+        // fill the remainder with random movies from the temp endpoint.
+        if (movies.length < desired) {
+          try {
+            const remaining = desired - movies.length
+            const fallbackRaw = await apiFetch<any[]>(`/movie/temp-trending?count=${remaining}`)
+            const fallback = normalizeMovies(fallbackRaw).filter(m => !movies.some(x => x.id === m.id))
+            movies = movies.concat(fallback)
+          } catch (inner) {
+            // Ignore fallback errors and use whatever we have from trending
+            console.warn('[movie] fetchTrending fallback failed:', inner)
+          }
+        }
+
+        this.trending = movies
       } catch (e) { console.error('[movie] fetchTrending failed:', e) }
     },
 

@@ -1,5 +1,24 @@
 <template>
   <v-container class="pa-6" style="max-width: 720px">
+    <template v-if="showProfileSkeleton">
+      <div class="d-flex align-center ga-5 mb-8">
+        <v-skeleton-loader type="avatar" class="profile-avatar-skeleton" />
+        <div class="flex-grow-1 d-flex flex-column ga-2">
+          <v-skeleton-loader type="text" class="profile-line profile-line--title" />
+          <v-skeleton-loader type="text" class="profile-line profile-line--subtitle" />
+        </div>
+      </div>
+
+      <div class="d-flex ga-4 mb-8 flex-wrap">
+        <v-skeleton-loader v-for="item in 3" :key="item" type="card" class="stat-skeleton" />
+      </div>
+
+      <div class="d-flex flex-column ga-3">
+        <v-skeleton-loader v-for="item in 3" :key="`review-${item}`" type="article" rounded="lg" />
+      </div>
+    </template>
+
+    <template v-else>
 
     <!-- Header -->
     <div class="d-flex align-center ga-5 mb-8">
@@ -33,16 +52,42 @@
     </div>
 
     <!-- Recent Reviews -->
-    <div v-if="userStore.reviews.length">
-      <div class="section-label mb-3">RECENT REVIEWS</div>
+    <div v-if="isLoading" class="d-flex flex-column ga-3">
+      <v-skeleton-loader v-for="item in 3" :key="item" type="article" rounded="lg" />
+    </div>
+
+    <div v-else-if="userStore.reviews.length">
+      <div class="d-flex flex-column ga-3 mb-4">
+        <div class="section-label">{{ reviewSectionLabel }}</div>
+        <v-text-field
+          v-model="reviewSearchQuery"
+          variant="outlined"
+          density="comfortable"
+          rounded="lg"
+          clearable
+          hide-details
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search by movie title or review text"
+          class="review-search"
+        />
+      </div>
+
       <div class="d-flex flex-column ga-3">
         <ReviewCard
-          v-for="review in recentReviews"
+          v-for="review in visibleReviews"
           :key="review.id"
           :review="review"
         />
       </div>
-      <div v-if="userStore.reviews.length > 3" class="d-flex justify-center mt-4">
+
+      <div v-if="!visibleReviews.length" class="d-flex flex-column align-center justify-center py-8 text-center">
+        <v-icon size="44" class="mb-3" style="color: rgba(var(--v-theme-on-surface), 0.18)">mdi-text-box-search-outline</v-icon>
+        <p class="text-body-2 mb-0" style="color: rgba(var(--v-theme-on-surface), 0.45)">
+          No reviews match "{{ reviewSearchQuery }}".
+        </p>
+      </div>
+
+      <div v-else-if="!hasActiveReviewSearch && userStore.reviews.length > 3" class="d-flex justify-center mt-4">
         <v-btn
           variant="outlined"
           rounded="pill"
@@ -61,21 +106,54 @@
       <p class="text-body-2" style="color: rgba(var(--v-theme-on-surface), 0.45)">No reviews yet.</p>
     </div>
 
+    </template>
+
   </v-container>
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import ReviewCard from '~/components/ReviewCard.vue'
+
 definePageMeta({ middleware: 'auth' })
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const isLoading = ref(false)
+const reviewSearchQuery = ref('')
 
-try {
-  await Promise.all([
-    userStore.fetchMyReviews(),
-    userStore.fetchWatchLater(),
-  ])
-} catch { /* ignore */ }
+const loadProfileData = async () => {
+  isLoading.value = true
+
+  try {
+    await authStore.restoreSession()
+
+    if (!authStore.isLoggedIn || !authStore.user) return
+
+    await Promise.all([
+      userStore.fetchMyReviews(),
+      userStore.fetchWatchLater(),
+    ])
+  } catch {
+    // Keep existing state on profile load failures.
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadProfileData()
+})
+
+watch(() => authStore.user?.id, (userId, previousUserId) => {
+  if (userId && userId !== previousUserId) {
+    void loadProfileData()
+  }
+})
+
+const showProfileSkeleton = computed(() =>
+  authStore.isRestoringSession || !authStore.sessionRestored || (authStore.isLoggedIn && !authStore.user) || isLoading.value
+)
 
 const initial = computed(() =>
   authStore.user?.userName?.charAt(0).toUpperCase() ?? '?'
@@ -92,7 +170,27 @@ const stats = computed(() => [
   },
 ])
 
-const recentReviews = computed(() => userStore.reviews.slice(0, 3))
+const hasActiveReviewSearch = computed(() => reviewSearchQuery.value.trim().length > 0)
+
+const filteredReviews = computed(() => {
+  const query = reviewSearchQuery.value.trim().toLowerCase()
+
+  if (!query) return userStore.reviews
+
+  return userStore.reviews.filter(review => {
+    const haystacks = [review.movieTitle, review.reviewText ?? '']
+
+    return haystacks.some(value => value.toLowerCase().includes(query))
+  })
+})
+
+const reviewSectionLabel = computed(() =>
+  hasActiveReviewSearch.value ? 'SEARCH RESULTS' : 'RECENT REVIEWS'
+)
+
+const visibleReviews = computed(() =>
+  hasActiveReviewSearch.value ? filteredReviews.value : filteredReviews.value.slice(0, 3)
+)
 </script>
 
 <style scoped>
@@ -107,5 +205,33 @@ const recentReviews = computed(() => userStore.reviews.slice(0, 3))
   min-width: 100px;
   flex: 1;
   border-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.review-search :deep(.v-field) {
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.profile-avatar-skeleton {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.profile-line {
+  width: 100%;
+}
+
+.profile-line--title {
+  max-width: 220px;
+}
+
+.profile-line--subtitle {
+  max-width: 300px;
+}
+
+.stat-skeleton {
+  min-width: 100px;
+  flex: 1;
 }
 </style>
