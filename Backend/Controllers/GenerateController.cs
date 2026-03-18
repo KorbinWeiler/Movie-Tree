@@ -9,7 +9,8 @@ public class GenerateController(
     AppDbContext db,
     ChatService chatService,
     EmbeddedService embeddedService,
-    SearchService searchService) : ControllerBase
+    SearchService searchService,
+    ILogger<GenerateController> logger) : ControllerBase
 {
     private const int DefaultRecommendationCount = 30;
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -120,44 +121,52 @@ public class GenerateController(
 
     private async Task<IActionResult> RecommendFromMovieIdsAsync(IReadOnlyCollection<int>? movieIds, int requestedCount)
     {
-        if (movieIds is null || movieIds.Count == 0)
-            return BadRequest("At least one movie ID is required.");
-
-        var count = NormalizeCount(requestedCount);
-        var movieIdSet = movieIds.ToHashSet();
-
-        var descriptions = await db.Movies
-            .Where(m => movieIdSet.Contains(m.Id) && m.IsVisible && m.Description != null)
-            .Select(m => m.Description!)
-            .ToListAsync();
-
-        if (descriptions.Count == 0)
-            return NotFound("No descriptions found for the provided movie IDs.");
-
-        string generalizedDescription;
         try
         {
-            generalizedDescription = await chatService.GeneralizeMovieDescriptions(descriptions.ToArray());
-        }
-        catch (Exception ex)
-        {
-            generalizedDescription = BuildFallbackDescription(descriptions);
+            if (movieIds is null || movieIds.Count == 0)
+                return BadRequest("At least one movie ID is required.");
+
+            var count = NormalizeCount(requestedCount);
+            var movieIdSet = movieIds.ToHashSet();
+
+            var descriptions = await db.Movies
+                .Where(m => movieIdSet.Contains(m.Id) && m.IsVisible && m.Description != null)
+                .Select(m => m.Description!)
+                .ToListAsync();
+
+            if (descriptions.Count == 0)
+                return NotFound("No descriptions found for the provided movie IDs.");
+
+            string generalizedDescription;
+            try
+            {
+                generalizedDescription = await chatService.GeneralizeMovieDescriptions(descriptions.ToArray());
+            }
+            catch (Exception ex)
+            {
+                generalizedDescription = BuildFallbackDescription(descriptions);
+
+                if (string.IsNullOrWhiteSpace(generalizedDescription))
+                    return StatusCode(502, $"AI generalization failed: {ex.Message}");
+            }
 
             if (string.IsNullOrWhiteSpace(generalizedDescription))
-                return StatusCode(502, $"AI generalization failed: {ex.Message}");
-        }
+                return StatusCode(502, "AI returned an empty description.");
 
-        if (string.IsNullOrWhiteSpace(generalizedDescription))
-            return StatusCode(502, "AI returned an empty description.");
-
-        try
-        {
-            var results = await SearchAndFillAsync(generalizedDescription, movieIdSet, count);
-            return Ok(results);
+            try
+            {
+                var results = await SearchAndFillAsync(generalizedDescription, movieIdSet, count);
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(502, ex.Message);
+            }
         }
         catch (Exception ex)
         {
-            return StatusCode(502, ex.Message);
+            logger.LogError(ex, "Generate pipeline failed in RecommendFromMovieIdsAsync for movieIds={MovieIds}", movieIds);
+            return StatusCode(500, new { error = "Generate pipeline failed", message = ex.Message });
         }
     }
 
