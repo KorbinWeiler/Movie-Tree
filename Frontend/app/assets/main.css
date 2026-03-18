@@ -35,6 +35,20 @@ a {
   color: inherit;
 }
 
+/* Improve contrast for filled primary controls without changing the whole theme token set. */
+.v-btn.bg-primary,
+.v-chip.bg-primary {
+  background-color: #9c7400 !important;
+  color: #fff7dc !important;
+}
+
+.v-btn.bg-primary .v-btn__content,
+.v-btn.bg-primary .v-icon,
+.v-chip.bg-primary .v-chip__content,
+.v-chip.bg-primary .v-icon {
+  color: inherit !important;
+}
+
 /* Deployment safety: keep movie cards visible even if scoped CSS load/order changes */
 .movie-card {
   min-height: 280px !important;
