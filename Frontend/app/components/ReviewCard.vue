@@ -131,8 +131,8 @@ const movieMeta = computed(() =>
 
 const scoreColor = computed(() => {
   const s = props.review.rating
-  if (s >= 7) return 'rgba(255, 209, 71, 0.15)'
-  if (s >= 4) return 'rgba(247, 155, 62, 0.15)'
+  if (s >= 7) return 'rgba(77, 184, 122, 0.18)'
+  if (s >= 4) return 'rgba(255, 209, 71, 0.18)'
   return 'rgba(224, 86, 86, 0.15)'
 })
 </script>
