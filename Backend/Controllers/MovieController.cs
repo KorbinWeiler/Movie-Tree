@@ -120,7 +120,7 @@ public class MovieController(AppDbContext db) : ControllerBase
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
             .FirstOrDefaultAsync(m => m.Id == id && (m.IsVisible || isAdmin));
 
-        if (movie is null)
+        if (movie is null || movie.Description is null)
         {
             try
             {
