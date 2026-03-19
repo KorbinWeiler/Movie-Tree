@@ -107,8 +107,21 @@ var configuredCorsOrigins = builder.Configuration
 var envCorsOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? string.Empty)
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+static string NormalizeOrigin(string origin)
+{
+    return origin.Trim().TrimEnd('/');
+}
+
 var explicitAllowedOrigins = configuredCorsOrigins
     .Concat(envCorsOrigins)
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(NormalizeOrigin)
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+
+var explicitAllowedOriginHosts = explicitAllowedOrigins
+    .Select(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) ? uri.Host : null)
+    .Where(host => !string.IsNullOrWhiteSpace(host))
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToArray();
 
@@ -125,14 +138,21 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin =>
               {
                   if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+
+                  var normalizedOrigin = NormalizeOrigin(origin);
                   var host = uri.Host;
+
                   // Allow any localhost port for development
                   if (host == "localhost" || host == "127.0.0.1") return true;
+
                   // Allow Azure Static Web Apps (both URL formats)
                   if (host.Equals("azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
                   if (host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)) return true;
+
                   // Allow explicitly configured production frontend origins
-                  if (explicitAllowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
+                  if (explicitAllowedOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase)) return true;
+                  if (explicitAllowedOriginHosts.Contains(host, StringComparer.OrdinalIgnoreCase)) return true;
+
                   return false;
               })
               .AllowAnyHeader()
