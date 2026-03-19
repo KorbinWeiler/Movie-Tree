@@ -1,10 +1,12 @@
+import { normalizeApiBase } from '../utils/apiBase'
+
 // Typed wrapper around $fetch that injects the base URL and auth token
 export function useApi() {
   const config = useRuntimeConfig()
 
   async function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     const headers: Record<string, string> = {}
-    const base = String(config.public.apiBase || '').replace(/\/$/, '')
+    const base = normalizeApiBase(config.public.apiBase)
     const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
     // Read token lazily so this works both inside and outside Vue setup context

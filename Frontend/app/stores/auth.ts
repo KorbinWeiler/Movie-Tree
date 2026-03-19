@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { normalizeApiBase } from '../utils/apiBase'
 
 let restoreSessionPromise: Promise<void> | null = null
 
@@ -93,7 +94,8 @@ export const useAuthStore = defineStore('auth', {
 
     async login(email: string, password: string) {
       const config = useRuntimeConfig()
-      const raw = await $fetch<any>(`${config.public.apiBase}/auth/login`, {
+      const apiBase = normalizeApiBase(config.public.apiBase)
+      const raw = await $fetch<any>(`${apiBase}/auth/login`, {
         method: 'POST',
         body: { email, password },
       })
@@ -105,7 +107,8 @@ export const useAuthStore = defineStore('auth', {
 
     async register(username: string, email: string, password: string) {
       const config = useRuntimeConfig()
-      const raw = await $fetch<any>(`${config.public.apiBase}/auth/register`, {
+      const apiBase = normalizeApiBase(config.public.apiBase)
+      const raw = await $fetch<any>(`${apiBase}/auth/register`, {
         method: 'POST',
         body: { username, email, password },
       })
@@ -123,7 +126,8 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const config = useRuntimeConfig()
-        const raw = await $fetch<any>(`${config.public.apiBase}/auth/me`, {
+        const apiBase = normalizeApiBase(config.public.apiBase)
+        const raw = await $fetch<any>(`${apiBase}/auth/me`, {
           headers: { Authorization: `Bearer ${this.token}` },
         })
         this.user = normalizeMeResponse(raw)

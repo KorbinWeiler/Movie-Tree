@@ -93,6 +93,7 @@ public class MovieController(AppDbContext db) : ControllerBase
 
     // GET /api/movie/{id}
     [HttpGet("{id:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(int id)
     {
         // Admins can fetch hidden movies (to unhide from the modal)
@@ -102,7 +103,7 @@ public class MovieController(AppDbContext db) : ControllerBase
             .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
             .FirstOrDefaultAsync(m => m.Id == id && (m.IsVisible || isAdmin));
 
-        if (movie is null || movie!.Description is null)
+        if (movie is null)
         {
             try
             {
@@ -115,7 +116,22 @@ public class MovieController(AppDbContext db) : ControllerBase
             {
                 return NotFound($"Movie with ID {id} not found. Error: {ex.Message}");
             }
-        };
+        }
+
+        if (movie.Description is null)
+        {
+            try
+            {
+                var tmdb = new TMDBService(db);
+                var detail = await tmdb.GetMovieByIdAsync(id);
+                if (detail is not null) return Ok(detail);
+            }
+            catch
+            {
+                // Ignore TMDB failures and fall back to the DB record.
+            }
+        }
+
         return Ok(ToDetail(movie));
     }
 

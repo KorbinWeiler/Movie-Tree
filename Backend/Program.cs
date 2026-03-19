@@ -155,6 +155,23 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// Diagnostic: log mapped controller endpoints to help debug missing routes in prod
+try
+{
+    var provider = app.Services.GetRequiredService<Microsoft.AspNetCore.Mvc.Infrastructure.IActionDescriptorCollectionProvider>();
+    foreach (var ad in provider.ActionDescriptors.Items)
+    {
+        var cad = ad as Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor;
+        app.Logger.LogInformation("Mapped endpoint: {Name} — {Route}",
+            ad.DisplayName,
+            cad?.AttributeRouteInfo?.Template ?? "(conventional)");
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Failed to enumerate action descriptors for diagnostic logging.");
+}
+
 var runStartupTasks = builder.Configuration.GetValue("StartupTasks:RunOnStartup", app.Environment.IsDevelopment());
 
 if (runStartupTasks)
