@@ -43,6 +43,23 @@ public class MovieController(AppDbContext db) : ControllerBase
         if (genreId.HasValue)
             query = query.Where(m => m.MovieGenres.Any(mg => mg.GenreId == genreId.Value));
 
+        // Special-case: if the client requested the custom "Josh" genre, return a
+        // hardcoded list of movie IDs instead of filtering by MovieGenres.
+        if (genreId.HasValue && genreId.Value == 99999)
+        {
+            var joshIds = new[] { 6439, 157763, 538854, 18980, 15922, 21599, 77716, 61828, 9023, 603206, 57212 };// hardcoded movie IDs for "Josh"
+            var joshMovies = await db.Movies
+                .Include(m => m.Reviews)
+                .Include(m => m.MovieGenres).ThenInclude(mg => mg.Genre)
+                .Where(m => joshIds.Contains(m.Id) && m.IsVisible)
+                .OrderBy(m => m.Title)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return Ok(joshMovies.Select(ToSummary));
+        }
+
         var movies = await query
             .OrderBy(m => m.Title)
             .Skip((page - 1) * pageSize)
@@ -153,7 +170,10 @@ public class MovieController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetGenres()
     {
         var genres = await db.Genres.OrderBy(g => g.Name).ToListAsync();
-        return Ok(genres.Select(g => new GenreDto(g.Id, g.Name)));
+        var dtos = genres.Select(g => new GenreDto(g.Id, g.Name)).ToList();
+        // Append a custom genre called "Josh" at the end of the results
+        dtos.Add(new GenreDto(99999, "Josh"));
+        return Ok(dtos);
     }
 
     [HttpPost("list/upload")]
